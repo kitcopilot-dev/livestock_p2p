@@ -82,8 +82,6 @@ jobs:
 
       - name: Setup pnpm
         uses: pnpm/action-setup@v4
-        with:
-          version: 11
 
       - name: Pull latest
         run: git fetch origin main && git reset --hard origin/main
