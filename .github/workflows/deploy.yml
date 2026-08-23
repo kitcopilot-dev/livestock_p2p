@@ -100,8 +100,11 @@ jobs:
 
       - name: Restart app
         run: |
+          # Kill both the pnpm wrapper and the actual next-server process,
+          # otherwise the old build keeps holding port 3000.
           pkill -f "next start" 2>/dev/null || true
-          sleep 2
+          pkill -f "next-server" 2>/dev/null || true
+          sleep 3
           cd apps/api && nohup npx next start -p 3000 -H 0.0.0.0 > /tmp/nextapp.log 2>&1 &
-          sleep 5
-          curl -sf http://localhost:3000/ > /dev/null && echo "✅ App is running" || echo "❌ App failed to start"
+          sleep 8
+          curl -sf http://localhost:3000/ > /dev/null && echo "✅ App is running" || { echo "❌ App failed to start"; tail -20 /tmp/nextapp.log; exit 1; }
