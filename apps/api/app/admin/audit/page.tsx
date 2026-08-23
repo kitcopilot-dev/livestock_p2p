@@ -27,9 +27,16 @@ function changeSummary(entry: {
   return "—";
 }
 
-function userLabel(u?: { name: string | null; email: string }): string {
-  if (!u) return "Unknown user";
-  return u.name ?? u.email;
+function UserCell({ user }: { user?: { name: string | null; email: string } }) {
+  if (!user) {
+    return <span className="text-cream-500">Unknown user</span>;
+  }
+  return (
+    <div>
+      <p className="font-medium text-cream-100">{user.name ?? "Unnamed"}</p>
+      <p className="text-xs text-cream-500">{user.email}</p>
+    </div>
+  );
 }
 
 export default async function AdminAuditPage() {
@@ -96,17 +103,15 @@ export default async function AdminAuditPage() {
                     </span>
                   </td>
                   <td className="px-5 py-3">
-                    <p className="font-medium text-cream-100">
-                      {userLabel(byId.get(entry.actorUserId ?? ""))}
-                    </p>
+                    <UserCell user={byId.get(entry.actorUserId ?? "")} />
                     {entry.actorRole && (
-                      <p className="text-xs text-cream-500">
+                      <p className="mt-0.5 text-xs text-cream-500">
                         {entry.actorRole}
                       </p>
                     )}
                   </td>
-                  <td className="px-5 py-3 text-cream-200">
-                    {userLabel(byId.get(entry.entityId))}
+                  <td className="px-5 py-3">
+                    <UserCell user={byId.get(entry.entityId)} />
                   </td>
                   <td className="px-5 py-3 font-medium text-hay-200">
                     {changeSummary(entry)}
