@@ -45,6 +45,15 @@ async function settingsActor(): Promise<{ id: string; role: string } | null> {
  * the compliance trail captures who changed platform economics and when.
  */
 export async function updatePlatformSettingsAction(formData: FormData): Promise<SettingsActionResult> {
+  try {
+    return await updatePlatformSettingsActionInner(formData);
+  } catch (err) {
+    console.error("[settings-action] UNCAUGHT ERROR", err);
+    throw err;
+  }
+}
+
+async function updatePlatformSettingsActionInner(formData: FormData): Promise<SettingsActionResult> {
   const user = await settingsActor();
   if (!user || (user.role !== "PLATFORM" && user.role !== "ADMIN")) {
     return { ok: false, error: "Only the platform operator can edit settings" };
