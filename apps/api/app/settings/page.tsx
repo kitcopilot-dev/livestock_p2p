@@ -162,12 +162,15 @@ export default async function SettingsPage() {
 
             <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">
               <Field label="Inspection window (hours)">
-                <input name="inspectionWindowHours" type="number" min="0.02" max="720" step="1"
+                {/* step=any: min is fractional (0.02h) so a fixed step like 1 would
+                    make valid defaults (24/48) fail native constraint validation
+                    and silently block form submission. */}
+                <input name="inspectionWindowHours" type="number" min="0.02" max="720" step="any"
                   defaultValue={settings.inspectionWindowMs / 3_600_000} disabled={!isPlatform} className="input" />
                 <span className="mt-1 block text-[11px] text-cream-500">after delivery, before auto-release</span>
               </Field>
               <Field label="Dispute proof window (hours)">
-                <input name="disputeProofWindowHours" type="number" min="0.02" max="720" step="1"
+                <input name="disputeProofWindowHours" type="number" min="0.02" max="720" step="any"
                   defaultValue={settings.disputeProofWindowMs / 3_600_000} disabled={!isPlatform} className="input" />
                 <span className="mt-1 block text-[11px] text-cream-500">evidence submission after a dispute</span>
               </Field>

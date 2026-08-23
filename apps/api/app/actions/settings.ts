@@ -48,7 +48,9 @@ export async function updatePlatformSettingsAction(formData: FormData): Promise<
   try {
     return await updatePlatformSettingsActionInner(formData);
   } catch (err) {
-    console.error("[settings-action] UNCAUGHT ERROR", err);
+    // Surface the real stack on the server — Next otherwise collapses action
+    // failures into an opaque 500 with a digest.
+    console.error("[settings-action] error", err);
     throw err;
   }
 }
