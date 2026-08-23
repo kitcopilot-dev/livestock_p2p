@@ -269,7 +269,6 @@ export default async function MarketplacePage({
         maxHead={maxHead}
         locationOptions={locationOptions}
         activeFilterCount={activeFilterCount}
-        buildHref={buildHref}
       />
 
       {/* Results count */}
