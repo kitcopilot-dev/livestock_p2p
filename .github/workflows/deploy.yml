@@ -105,6 +105,8 @@ jobs:
           pkill -f "next start" 2>/dev/null || true
           pkill -f "next-server" 2>/dev/null || true
           sleep 3
-          cd apps/api && nohup npx next start -p 3000 -H 0.0.0.0 > /tmp/nextapp.log 2>&1 &
-          sleep 8
+          # setsid detaches from the runner's process group so the server
+          # survives the job ending (plain nohup gets reaped).
+          cd apps/api && setsid nohup npx next start -p 3000 -H 0.0.0.0 > /tmp/nextapp.log 2>&1 < /dev/null &
+          sleep 10
           curl -sf http://localhost:3000/ > /dev/null && echo "✅ App is running" || { echo "❌ App failed to start"; tail -20 /tmp/nextapp.log; exit 1; }
