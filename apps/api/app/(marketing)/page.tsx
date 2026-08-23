@@ -1,9 +1,9 @@
 import Link from "next/link";
-import { getCurrentUser } from "../lib/auth";
+import { getCurrentUser } from "../../lib/auth";
 
 export const dynamic = "force-dynamic";
 
-export default async function RootPage() {
+export default async function LandingPage() {
   const user = await getCurrentUser();
 
   // If authenticated, redirect to dashboard

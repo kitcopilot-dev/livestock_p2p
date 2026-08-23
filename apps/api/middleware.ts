@@ -16,11 +16,13 @@ export function middleware(request: NextRequest) {
 
   // Public routes — always accessible
   if (
+    pathname === "/" ||
     pathname.startsWith("/login") ||
     pathname.startsWith("/register") ||
     pathname.startsWith("/auth/") ||
     pathname.startsWith("/api/auth/") ||
     pathname.startsWith("/_next/") ||
+    pathname.startsWith("/marketplace") ||
     pathname === "/favicon.ico"
   ) {
     return NextResponse.next();

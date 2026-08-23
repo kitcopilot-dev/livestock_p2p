@@ -15,7 +15,7 @@ import {
 } from "@livestock/domain";
 import { scheduleDisputeProofDeadline, scheduleInspectionTimeout } from "@livestock/jobs";
 import { processEscrowSettlement, chargeAndFundEscrow } from "@livestock/payments";
-import { getDemoUser, demoWindowsFromCookie } from "../../lib/demoAuth";
+import { getDemoUser, demoWindowsFromCookie, actorForDemoRole } from "../../lib/demoAuth";
 
 export interface ActionResult {
   ok: boolean;
@@ -82,7 +82,7 @@ export async function advanceEscrowAction(
     const cookieStore = await cookies();
     const { inspectionWindowMs, disputeProofWindowMs } = demoWindowsFromCookie(cookieStore);
     const tm = new TransactionManager();
-    const actor = user.role;
+    const actor = actorForDemoRole(user.role);
     const base = { actor, userId: user.id };
     let escrow;
     if (step === "fund") {
@@ -116,7 +116,7 @@ export async function advanceEscrowAction(
 export async function cancelEscrowAction(escrowId: string): Promise<ActionResult> {
   try {
     const user = await getDemoUser();
-    const escrow = await new TransactionManager().cancel(escrowId, { actor: user.role, userId: user.id });
+    const escrow = await new TransactionManager().cancel(escrowId, { actor: actorForDemoRole(user.role), userId: user.id });
     void escrow;
     revalidatePath("/escrows");
     revalidatePath(`/escrows/${escrowId}`);

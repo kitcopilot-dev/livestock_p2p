@@ -32,6 +32,7 @@ enum UserRole {
   SELLER
   HAULER
   PLATFORM
+  ADMIN
 }
 
 enum KycStatus {

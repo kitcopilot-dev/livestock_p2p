@@ -183,6 +183,8 @@ function getRoleForEmail(email: string): UserRole {
  * Map a UserRole to the domain actor string used by TransactionManager.
  */
 export function actorForRole(role: UserRole): "BUYER" | "SELLER" | "HAULER" | "PLATFORM" {
+  // ADMIN maps to PLATFORM for state machine purposes
+  if (role === "ADMIN") return "PLATFORM";
   return role;
 }
 

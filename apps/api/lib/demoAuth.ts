@@ -24,9 +24,10 @@ const DEMO_ROLE_EMAILS: Record<UserRole, string> = {
   SELLER: "demo.seller@livestock.local",
   HAULER: "demo.hauler@livestock.local",
   PLATFORM: "demo.platform@livestock.local",
+  ADMIN: "admin@livestockp2p.local",
 };
 
-const ALL_DEMO_ROLES: UserRole[] = ["BUYER", "SELLER", "HAULER", "PLATFORM"];
+const ALL_DEMO_ROLES: UserRole[] = ["BUYER", "SELLER", "HAULER", "PLATFORM", "ADMIN"];
 
 // Tracks the payout rail used for the last wallet provisioning pass. The demo
 // users themselves are NOT cached across calls — they are reconciled against
@@ -185,6 +186,8 @@ export { ALL_DEMO_ROLES };
 
 /** Maps a demo role to the state-machine actor and gating role. */
 export function actorForDemoRole(role: UserRole): "BUYER" | "SELLER" | "HAULER" | "PLATFORM" {
+  // ADMIN maps to PLATFORM for state machine purposes
+  if (role === "ADMIN") return "PLATFORM";
   return role;
 }
 
