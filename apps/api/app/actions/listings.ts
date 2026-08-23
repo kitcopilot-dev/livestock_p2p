@@ -182,15 +182,10 @@ export async function createEscrowFromListingAction(listingId: string): Promise<
       },
     });
 
-    // Auto-fund the escrow: in dry-run mode just flip the state; on a real
-    // rail charge the buyer's funding source. This makes "Buy now" a single
-    // checkout step instead of create-then-fund.
-    if (process.env.PAYMENTS_DRY_RUN === "false") {
-      const { chargeAndFundEscrow } = await import("@livestock/payments");
-      await chargeAndFundEscrow(escrow.id, { userId: buyer.id });
-    } else {
-      await tm.fund(escrow.id, { actor: "BUYER", userId: buyer.id });
-    }
+    // Auto-fund the escrow: ledger-only fund via the transaction manager.
+    // The buyer can then fund their escrow manually from the escrow detail page.
+    // In dry-run mode, the fund action is a no-op state transition.
+    await tm.fund(escrow.id, { actor: "BUYER", userId: buyer.id });
 
     revalidatePath("/marketplace");
     revalidatePath("/seller");

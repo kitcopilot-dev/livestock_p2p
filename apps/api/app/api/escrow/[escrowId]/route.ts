@@ -8,7 +8,7 @@ import {
   markDeliveredSchema,
 } from "@livestock/domain";
 import { scheduleDisputeProofDeadline, scheduleInspectionTimeout } from "@livestock/jobs";
-import { chargeAndFundEscrow } from "@livestock/payments";
+
 import { actorForRole, isDemoMode, requireUser } from "../../../../lib/auth";
 import { demoWindowsFromCookie } from "../../../../lib/demoAuth";
 import { getPlatformSettings } from "../../../../lib/platformSettings";
@@ -50,12 +50,8 @@ export async function POST(
 
     switch (body.data.action) {
       case "fund": {
-        if (process.env.PAYMENTS_DRY_RUN === "false") {
-          const result = await chargeAndFundEscrow(escrowId, {
-            userId: user.userId,
-          });
-          return NextResponse.json({ escrow: result.escrow });
-        }
+        // Manual funding: ledger-only fund via the transaction manager.
+        // Payment collection is a separate step through the rail.
         return NextResponse.json({ escrow: await tm.fund(escrowId, base) });
       }
       case "cancel":

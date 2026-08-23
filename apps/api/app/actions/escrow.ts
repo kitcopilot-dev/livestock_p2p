@@ -14,7 +14,7 @@ import {
   type DisputeVerdict,
 } from "@livestock/domain";
 import { scheduleDisputeProofDeadline, scheduleInspectionTimeout } from "@livestock/jobs";
-import { processEscrowSettlement, chargeAndFundEscrow } from "@livestock/payments";
+import { processEscrowSettlement } from "@livestock/payments";
 import { getDemoUser, demoWindowsFromCookie, actorForDemoRole } from "../../lib/demoAuth";
 import { isDemoMode } from "../../lib/auth";
 import { getPlatformSettings } from "../../lib/platformSettings";
@@ -90,17 +90,11 @@ export async function advanceEscrowAction(
     const base = { actor, userId: user.id };
     let escrow;
     if (step === "fund") {
-      if (process.env.PAYMENTS_DRY_RUN === "false") {
-        // Real rail: charge the buyer's funding source on the configured rail
-        // (Stripe / Dwolla) and move DRAFT -> FUNDED in one step. The charge is
-        // idempotent — a retried "Fund" click reuses the existing PaymentIntent.
-        const result = await chargeAndFundEscrow(escrowId, {
-          userId: user.id,
-        });
-        escrow = result.escrow;
-      } else {
-        escrow = await tm.fund(escrowId, base);
-      }
+      // Manual funding: ledger-only fund via the transaction manager.
+      // Actual payment collection happens separately through the rail
+      // (e.g. buyer's Stripe/Dwolla source is charged on fund). For now,
+      // funding is an explicit admin/buyer action without auto-charging.
+      escrow = await tm.fund(escrowId, base);
     } else if (step === "inTransit") {
       escrow = await tm.markInTransit(escrowId, base);
     } else {

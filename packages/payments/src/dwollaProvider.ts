@@ -56,7 +56,7 @@ export class DwollaProvider implements PaymentProvider {
   }
 
   async chargeAndHold(request: ChargeRequest): Promise<ChargeResult> {
-    const result = await this.#createTransfer({
+    const result = await this.createTransferInternal({
       source: request.sourceAccountRef,
       destination: this.platformFundingSourceUrl,
       amountCents: request.amountCents,
@@ -69,7 +69,7 @@ export class DwollaProvider implements PaymentProvider {
   }
 
   async transferFromFbo(request: TransferRequest): Promise<TransferResult> {
-    const result = await this.#createTransfer({
+    const result = await this.createTransferInternal({
       source: this.platformFundingSourceUrl,
       destination: request.destinationAccountRef,
       amountCents: request.amountCents,
@@ -82,9 +82,7 @@ export class DwollaProvider implements PaymentProvider {
   }
 
   async refund(request: RefundRequest): Promise<TransferResult> {
-    // Dwolla transfers are not linked to a prior transfer for refunds; a
-    // refund is simply a new transfer from the platform back to the buyer.
-    const result = await this.#createTransfer({
+    const result = await this.createTransferInternal({
       source: this.platformFundingSourceUrl,
       destination: request.metadata.destinationAccountRef ?? "",
       amountCents: request.amountCents,
@@ -94,6 +92,75 @@ export class DwollaProvider implements PaymentProvider {
       operation: "refund",
     });
     return result;
+  }
+
+  /**
+   * Create a new Dwolla customer and return the customer URL.
+   * For the user-initiated flow, we collect minimal info and create
+   * the customer; the user then adds their funding source separately.
+   */
+  async createCustomer(opts: {
+    firstName: string;
+    lastName: string;
+    email: string;
+    ipAddress?: string;
+  }): Promise<{ customerUrl: string; customerId: string }> {
+    try {
+      const res = await this.client.post("customers", {
+        firstName: opts.firstName,
+        lastName: opts.lastName,
+        email: opts.email,
+        type: "personal",
+        ipAddress: opts.ipAddress ?? "127.0.0.1",
+      });
+      const location = res.headers.get("location");
+      if (!location) throw new Error("Dwolla did not return a customer location header");
+      const customerId = location.split("/").pop() ?? "";
+      return { customerUrl: location, customerId };
+    } catch (err) {
+      const e = err as Record<string, any>;
+      const body = e.body as Record<string, any> | undefined;
+      const errorCode = body?.code as string | undefined;
+      if (errorCode === "Duplicate") {
+        const errors = body?._embedded?.errors as Array<Record<string, any>> | undefined;
+        const dup = errors?.find((x) => x.code === "Duplicate");
+        const aboutHref = dup?._links?.about?.href as string | undefined;
+        if (aboutHref) {
+          const customerId = aboutHref.split("/").pop() ?? "";
+          return { customerUrl: aboutHref, customerId };
+        }
+      }
+      throw err;
+    }
+  }
+
+  /**
+   * Add a bank account funding source to a Dwolla customer.
+   * In sandbox, micro-deposits verify immediately.
+   */
+  async addFundingSource(customerUrl: string, opts: {
+    routingNumber: string;
+    accountNumber: string;
+    bankAccountType: "checking" | "savings";
+    name: string;
+  }): Promise<{ fundingSourceUrl: string }> {
+    try {
+      const res = await this.client.post(`${customerUrl}/funding-sources`, {
+        routingNumber: opts.routingNumber,
+        accountNumber: opts.accountNumber,
+        bankAccountType: opts.bankAccountType,
+        name: opts.name,
+      });
+      const loc = res.headers.get("location");
+      if (!loc) throw new Error("Dwolla did not return a funding-source location header");
+      return { fundingSourceUrl: loc };
+    } catch (err) {
+      const body = (err as { body?: Record<string, any> }).body;
+      if (body?.code === "DuplicateResource" && body._links?.about?.href) {
+        return { fundingSourceUrl: body._links.about.href };
+      }
+      throw err;
+    }
   }
 
   async getBalance(): Promise<Money> {
@@ -107,7 +174,6 @@ export class DwollaProvider implements PaymentProvider {
       };
     } catch (err) {
       if ((err as { status?: number }).status === 404) {
-        // Some funding sources (e.g. unverified bank accounts) expose no balance.
         throw new PaymentProviderError("Dwolla funding source does not expose a balance", {
           retryable: false,
           cause: err,
@@ -118,8 +184,6 @@ export class DwollaProvider implements PaymentProvider {
   }
 
   verifyWebhook(rawBody: string | Buffer, headers: WebhookHeaders): NormalizedWebhookEvent {
-    // Dwolla signs webhooks with X-Request-Signature-SHA-256 (current) — the
-    // older `dwolla-signature` header is kept as a legacy fallback.
     const signature =
       asString(headers["x-request-signature-sha-256"]) ??
       asString(headers["x-request-signature-256"]) ??
@@ -150,7 +214,7 @@ export class DwollaProvider implements PaymentProvider {
     return Promise.resolve();
   }
 
-  async #createTransfer(args: {
+  private async createTransferInternal(args: {
     source: string;
     destination: string;
     amountCents: number;

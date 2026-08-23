@@ -1,7 +1,8 @@
 "use client";
 
-import { useState, useTransition } from "react";
-import { updateProfile } from "../actions/profile";
+import { useState, useEffect, useTransition } from "react";
+import { useSearchParams } from "next/navigation";
+import { updateProfile, connectStripe } from "../actions/profile";
 
 type Profile = {
   id: string;
@@ -35,6 +36,42 @@ const KYC_COLORS: Record<string, string> = {
   EXPIRED: "bg-dirt-700 text-cream-400 border-dirt-600",
 };
 
+function PaymentConnectionRow({
+  label,
+  description,
+  connected,
+  onConnect,
+  connecting,
+}: {
+  label: string;
+  description: string;
+  connected: boolean;
+  onConnect: () => void;
+  connecting: boolean;
+}) {
+  return (
+    <div className="flex items-center justify-between rounded-xl bg-dirt-800 px-4 py-3">
+      <div>
+        <span className="text-cream-400">{label}</span>
+        <p className="mt-0.5 text-xs text-cream-500">{description}</p>
+      </div>
+      {connected ? (
+        <span className="rounded-full bg-pasture-500/20 px-2.5 py-0.5 text-xs font-medium text-pasture-300 border border-pasture-500/30">
+          Connected
+        </span>
+      ) : (
+        <button
+          onClick={onConnect}
+          disabled={connecting}
+          className="rounded-lg bg-barn-500 px-4 py-1.5 text-xs font-semibold text-on-color transition hover:bg-barn-400 disabled:opacity-50"
+        >
+          {connecting ? "Connecting..." : `Connect ${label}`}
+        </button>
+      )}
+    </div>
+  );
+}
+
 export function ProfileClient({ profile }: Props) {
   const [pending, startTransition] = useTransition();
   const [saved, setSaved] = useState(false);
@@ -46,6 +83,41 @@ export function ProfileClient({ profile }: Props) {
     dotNumber: profile?.dotNumber ?? "",
     einTaxId: profile?.einTaxId ?? "",
   });
+  const [stripeConnecting, setStripeConnecting] = useState(false);
+  const [stripeError, setStripeError] = useState("");
+  const searchParams = useSearchParams();
+
+  useEffect(() => {
+    const stripeResult = searchParams.get("stripe");
+    if (stripeResult === "connected") {
+      setSaved(true);
+    } else if (stripeResult === "error") {
+      setStripeError("Stripe onboarding was not completed. Please try again.");
+    }
+  }, [searchParams]);
+
+  const handleStripeConnect = async () => {
+    setStripeConnecting(true);
+    setStripeError("");
+    try {
+      const res = await connectStripe();
+      if ("url" in res) {
+        window.location.href = res.url;
+      } else {
+        setStripeError(res.error);
+      }
+    } catch {
+      setStripeError("Failed to initiate Stripe connection");
+    } finally {
+      setStripeConnecting(false);
+    }
+  };
+
+  const handleDwollaConnect = () => {
+    // Dwolla connection requires bank details collected server-side.
+    // For now, redirect to a setup page.
+    window.location.href = "/settings?dwolla=connect";
+  };
 
   const update = (field: string, value: string) => {
     setForm((f) => ({ ...f, [field]: value }));
@@ -152,6 +224,7 @@ export function ProfileClient({ profile }: Props) {
         </div>
 
         {error && <p className="mt-4 text-sm text-red-400">{error}</p>}
+        {stripeError && <p className="mt-4 text-sm text-red-400">{stripeError}</p>}
         {saved && <p className="mt-4 text-sm text-pasture-400">Profile updated successfully.</p>}
 
         <div className="mt-6 flex justify-end">
@@ -165,37 +238,22 @@ export function ProfileClient({ profile }: Props) {
       {/* Payment rail info */}
       <div className="mt-6 rounded-2xl border border-dirt-600 bg-dirt-900/80 p-6 backdrop-blur">
         <h3 className="font-display text-lg font-bold text-cream-50">Payment Connections</h3>
+        <p className="mt-1 text-sm text-cream-400">Connect your payment accounts to receive payouts and fund escrows.</p>
         <div className="mt-4 space-y-3 text-sm">
-          <div className="flex items-center justify-between rounded-xl bg-dirt-800 px-4 py-3">
-            <div>
-              <span className="text-cream-400">Stripe</span>
-              <p className="mt-0.5 text-xs text-cream-500">Connected account for payouts</p>
-            </div>
-            {profile.stripeConnectedAccountId ? (
-              <span className="rounded-full bg-pasture-500/20 px-2.5 py-0.5 text-xs font-medium text-pasture-300 border border-pasture-500/30">
-                Connected
-              </span>
-            ) : (
-              <span className="rounded-full bg-dirt-700 px-2.5 py-0.5 text-xs font-medium text-cream-400 border border-dirt-600">
-                Not connected
-              </span>
-            )}
-          </div>
-          <div className="flex items-center justify-between rounded-xl bg-dirt-800 px-4 py-3">
-            <div>
-              <span className="text-cream-400">Dwolla</span>
-              <p className="mt-0.5 text-xs text-cream-500">ACH payment rail</p>
-            </div>
-            {profile.dwollaCustomerId ? (
-              <span className="rounded-full bg-pasture-500/20 px-2.5 py-0.5 text-xs font-medium text-pasture-300 border border-pasture-500/30">
-                Connected
-              </span>
-            ) : (
-              <span className="rounded-full bg-dirt-700 px-2.5 py-0.5 text-xs font-medium text-cream-400 border border-dirt-600">
-                Not connected
-              </span>
-            )}
-          </div>
+          <PaymentConnectionRow
+            label="Stripe"
+            description="Card and ACH payments via Stripe Connect"
+            connected={!!profile.stripeConnectedAccountId}
+            onConnect={() => handleStripeConnect()}
+            connecting={stripeConnecting}
+          />
+          <PaymentConnectionRow
+            label="Dwolla"
+            description="ACH payment rail"
+            connected={!!profile.dwollaCustomerId}
+            onConnect={() => handleDwollaConnect()}
+            connecting={false}
+          />
         </div>
       </div>
     </div>

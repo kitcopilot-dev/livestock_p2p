@@ -60,7 +60,6 @@ export class StripeProvider implements PaymentProvider {
           payment_method: request.sourceAccountRef,
           confirm: true,
           capture_method: "automatic",
-          // Funds land on the platform balance (our FBO/escrow account).
           transfer_data: { destination: this.platformAccountId },
           metadata: { ...request.metadata, idempotencyKey: request.idempotencyKey },
         },
@@ -115,6 +114,63 @@ export class StripeProvider implements PaymentProvider {
     }
   }
 
+  /**
+   * Create a new Stripe Connect custom connected account for a user.
+   * Returns the account ID (acct_xxx). The user must complete onboarding
+   * via an AccountLink before they can receive transfers.
+   */
+  async createConnectedAccount(opts: {
+    email: string;
+    firstName?: string;
+    lastName?: string;
+  }): Promise<string> {
+    const account = await this.stripe.accounts.create({
+      type: "custom",
+      country: "US",
+      email: opts.email,
+      business_type: "individual",
+      individual: { first_name: opts.firstName, last_name: opts.lastName },
+      capabilities: { transfers: { requested: true } },
+      tos_acceptance: { date: Math.floor(Date.now() / 1000), ip: "127.0.0.1" },
+      metadata: { platform: "livestock-p2p" },
+    });
+    return account.id;
+  }
+
+  /**
+   * Generate an AccountLink for a connected account's onboarding.
+   * The user is redirected to Stripe-hosted onboarding, then returns
+   * to the refresh or return URL.
+   */
+  async createAccountLink(accountId: string, opts: {
+    refreshUrl: string;
+    returnUrl: string;
+  }): Promise<string> {
+    const link = await this.stripe.accountLinks.create({
+      account: accountId,
+      refresh_url: opts.refreshUrl,
+      return_url: opts.returnUrl,
+      type: "account_onboarding",
+    });
+    return link.url;
+  }
+
+  /**
+   * Check if a connected account has completed onboarding.
+   */
+  async getOnboardingStatus(accountId: string): Promise<{
+    isComplete: boolean;
+    currentlyDue: string[];
+    errors: string[];
+  }> {
+    const account = await this.stripe.accounts.retrieve(accountId);
+    return {
+      isComplete: account.charges_enabled && account.payouts_enabled,
+      currentlyDue: account.requirements?.currently_due ?? [],
+      errors: (account.requirements?.errors ?? []).map((e) => (e as any).message ?? "unknown error"),
+    };
+  }
+
   async getBalance(): Promise<Money> {
     try {
       const balance = await this.stripe.balance.retrieve();
@@ -143,9 +199,6 @@ export class StripeProvider implements PaymentProvider {
   }
 
   async handleWebhookEvent(_event: NormalizedWebhookEvent): Promise<void> {
-    // Stripe events are handled by the orchestrator in webhook.ts — the
-    // normalized shape carries everything needed (metadata escrow ids, rail
-    // reference ids, statuses).
     return Promise.resolve();
   }
 }
