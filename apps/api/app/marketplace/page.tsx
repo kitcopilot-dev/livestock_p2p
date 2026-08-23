@@ -312,42 +312,74 @@ export default async function MarketplacePage({
         ))}
       </div>
 
-      {/* Filters Panel */}
-      <MarketplaceFilters
-        gender={gender}
-        tier={tier}
-        location={location}
-        load={load}
-        unit={unit}
-        minPrice={minPrice}
-        maxPrice={maxPrice}
-        minHead={minHead}
-        maxHead={maxHead}
-        locationOptions={locationOptions}
-        activeFilterCount={activeFilterCount}
-        ageRange={ageRange}
-        frame={frame}
-        harvest={harvest}
-        husbandry={husbandry}
-        healthStatus={healthStatus}
-        fertility={fertility}
-        condition={condition}
-      />
+      {/* Sidebar + Listings layout */}
+      <div className="flex gap-6 items-start">
+        {/* Filter sidebar */}
+        <aside className="hidden lg:block w-72 shrink-0 sticky top-24">
+          <MarketplaceFilters
+            gender={gender}
+            tier={tier}
+            location={location}
+            load={load}
+            unit={unit}
+            minPrice={minPrice}
+            maxPrice={maxPrice}
+            minHead={minHead}
+            maxHead={maxHead}
+            locationOptions={locationOptions}
+            activeFilterCount={activeFilterCount}
+            ageRange={ageRange}
+            frame={frame}
+            harvest={harvest}
+            husbandry={husbandry}
+            healthStatus={healthStatus}
+            fertility={fertility}
+            condition={condition}
+          />
+        </aside>
 
-      {/* Results count */}
-      <div className="flex items-center justify-between">
-        <p className="text-sm text-cream-400">
-          {sorted.length} lot{sorted.length !== 1 ? "s" : ""} found
-          {activeFilterCount > 0 && (
-            <span className="ml-2 text-cream-500">
-              ({activeFilterCount} filter{activeFilterCount !== 1 ? "s" : ""} active)
-            </span>
-          )}
-        </p>
+        {/* Listings column */}
+        <div className="flex-1 min-w-0">
+          {/* Mobile filter toggle */}
+          <div className="lg:hidden mb-4">
+            <MarketplaceFilters
+              gender={gender}
+              tier={tier}
+              location={location}
+              load={load}
+              unit={unit}
+              minPrice={minPrice}
+              maxPrice={maxPrice}
+              minHead={minHead}
+              maxHead={maxHead}
+              locationOptions={locationOptions}
+              activeFilterCount={activeFilterCount}
+              ageRange={ageRange}
+              frame={frame}
+              harvest={harvest}
+              husbandry={husbandry}
+              healthStatus={healthStatus}
+              fertility={fertility}
+              condition={condition}
+            />
+          </div>
+
+          {/* Results count */}
+          <div className="flex items-center justify-between mb-4">
+            <p className="text-sm text-cream-400">
+              {sorted.length} lot{sorted.length !== 1 ? "s" : ""} found
+              {activeFilterCount > 0 && (
+                <span className="ml-2 text-cream-500">
+                  ({activeFilterCount} filter{activeFilterCount !== 1 ? "s" : ""} active)
+                </span>
+              )}
+            </p>
+          </div>
+
+          {/* Grid + lot building */}
+          <LotBuilder listings={sorted} unit={unit} />
+        </div>
       </div>
-
-      {/* Grid + lot building */}
-      <LotBuilder listings={sorted} unit={unit} />
     </div>
   );
 }

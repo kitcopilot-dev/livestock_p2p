@@ -396,7 +396,7 @@ export function MarketplaceFilters({
   return (
     <section className="card p-0 overflow-hidden">
       {/* Header */}
-      <div className="flex items-center justify-between p-4 pb-3 border-b border-dirt-700/50">
+      <div className="flex items-center justify-between p-3 border-b border-dirt-700/50">
         <h3 className="text-sm font-semibold text-cream-200">
           Filters
           {activeFilterCount > 0 && (
@@ -415,150 +415,148 @@ export function MarketplaceFilters({
         )}
       </div>
 
-      <div className="flex">
-        {/* Sidebar filter groups */}
-        <div className="w-full border-r border-dirt-700/50 max-h-[70vh] overflow-y-auto">
-          <ul className="flex flex-col gap-4 text-sm p-3 text-cream-400">
-            {/* Gender */}
-            <ValueFilterGroup
-              title="Gender"
-              options={GENDER_OPTIONS}
-              selected={gender}
-              onToggle={(v) => toggleMultiValue("gender", gender, v)}
-            />
+      {/* Compact single-column filter list */}
+      <div className="max-h-[calc(100vh-10rem)] overflow-y-auto">
+        <ul className="flex flex-col gap-3 text-sm p-3 text-cream-400">
+          {/* Gender */}
+          <ValueFilterGroup
+            title="Gender"
+            options={GENDER_OPTIONS}
+            selected={gender}
+            onToggle={(v) => toggleMultiValue("gender", gender, v)}
+          />
 
-            {/* Tier */}
-            <ValueFilterGroup
-              title="Tier"
-              options={TIER_OPTIONS}
-              selected={tier}
-              onToggle={(v) => toggleMultiValue("tier", tier, v)}
-            />
+          {/* Tier */}
+          <ValueFilterGroup
+            title="Tier"
+            options={TIER_OPTIONS}
+            selected={tier}
+            onToggle={(v) => toggleMultiValue("tier", tier, v)}
+          />
 
-            {/* Age */}
-            <FilterGroup
-              title="Age"
-              options={AGE_OPTIONS}
-              selected={ageRange}
-              onToggle={(v) => toggleMultiValue("ageRange", ageRange, v)}
-            />
+          {/* Age */}
+          <FilterGroup
+            title="Age"
+            options={AGE_OPTIONS}
+            selected={ageRange}
+            onToggle={(v) => toggleMultiValue("ageRange", ageRange, v)}
+          />
 
-            {/* Frame */}
-            <FilterGroup
-              title="Frame"
-              options={FRAME_OPTIONS}
-              selected={frame}
-              onToggle={(v) => toggleMultiValue("frame", frame, v)}
-            />
+          {/* Frame */}
+          <FilterGroup
+            title="Frame"
+            options={FRAME_OPTIONS}
+            selected={frame}
+            onToggle={(v) => toggleMultiValue("frame", frame, v)}
+          />
 
-            {/* Condition / BCS */}
-            <FilterGroup
-              title="Condition"
-              options={CONDITION_OPTIONS}
-              selected={condition}
-              onToggle={(v) => toggleMultiValue("condition", condition, v)}
-            />
+          {/* Condition / BCS */}
+          <FilterGroup
+            title="Condition"
+            options={CONDITION_OPTIONS}
+            selected={condition}
+            onToggle={(v) => toggleMultiValue("condition", condition, v)}
+          />
 
-            {/* Harvest */}
-            <FilterGroup
-              title="Harvest"
-              options={HARVEST_OPTIONS}
-              selected={harvest}
-              onToggle={(v) => toggleMultiValue("harvest", harvest, v)}
-            />
+          {/* Harvest */}
+          <FilterGroup
+            title="Harvest"
+            options={HARVEST_OPTIONS}
+            selected={harvest}
+            onToggle={(v) => toggleMultiValue("harvest", harvest, v)}
+          />
 
-            {/* Husbandry */}
-            <FilterGroup
-              title="Husbandry"
-              options={HUSBANDRY_OPTIONS}
-              selected={husbandry}
-              onToggle={(v) => toggleMultiValue("husbandry", husbandry, v)}
-            />
+          {/* Husbandry */}
+          <FilterGroup
+            title="Husbandry"
+            options={HUSBANDRY_OPTIONS}
+            selected={husbandry}
+            onToggle={(v) => toggleMultiValue("husbandry", husbandry, v)}
+          />
 
-            {/* Health */}
-            <FilterGroup
-              title="Health"
-              options={HEALTH_OPTIONS}
-              selected={healthStatus}
-              onToggle={(v) => toggleMultiValue("healthStatus", healthStatus, v)}
-            />
+          {/* Health */}
+          <FilterGroup
+            title="Health"
+            options={HEALTH_OPTIONS}
+            selected={healthStatus}
+            onToggle={(v) => toggleMultiValue("healthStatus", healthStatus, v)}
+          />
 
-            {/* Fertility */}
-            <FilterGroup
-              title="Fertility"
-              options={FERTILITY_OPTIONS}
-              selected={fertility}
-              onToggle={(v) => toggleMultiValue("fertility", fertility, v)}
-            />
+          {/* Fertility */}
+          <FilterGroup
+            title="Fertility"
+            options={FERTILITY_OPTIONS}
+            selected={fertility}
+            onToggle={(v) => toggleMultiValue("fertility", fertility, v)}
+          />
 
-            {/* Load Type */}
-            <ValueFilterGroup
-              title="Load Type"
-              options={LOAD_OPTIONS}
-              selected={load}
-              onToggle={(v) => toggleMultiValue("load", load, v)}
-            />
+          {/* Load Type */}
+          <ValueFilterGroup
+            title="Load Type"
+            options={LOAD_OPTIONS}
+            selected={load}
+            onToggle={(v) => toggleMultiValue("load", load, v)}
+          />
 
-            {/* Location */}
-            <li className="flex flex-col gap-2">
-              <div className="flex items-center gap-2">
-                <span className="flex items-center gap-2 text-sm font-medium uppercase tracking-wide text-cream-300">
-                  <svg
-                    xmlns="http://www.w3.org/2000/svg"
-                    width="12"
-                    height="12"
-                    viewBox="0 0 12 12"
-                    fill="none"
-                    className="h-3 w-3 shrink-0"
-                  >
-                    <path
-                      d="M8.75 1.25H3.25C2.14543 1.25 1.25 2.14543 1.25 3.25V8.75C1.25 9.85457 2.14543 10.75 3.25 10.75H8.75C9.85457 10.75 10.75 9.85457 10.75 8.75V3.25C10.75 2.14543 9.85457 1.25 8.75 1.25Z"
-                      stroke="currentColor"
-                      strokeWidth="1.5"
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                    />
-                    <path
-                      d="M8.25 6H3.75"
-                      stroke="currentColor"
-                      strokeWidth="1.5"
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                    />
-                  </svg>
-                  <span className="text-start">Location</span>
-                </span>
-              </div>
-              <select
-                value={location}
-                onChange={(e) => updateParam("location", e.target.value)}
-                className="ml-5 w-[calc(100%-1.25rem)] rounded-lg border border-dirt-600 bg-dirt-950 px-2 py-1.5 text-xs text-cream-100 focus:border-hay-400 focus:outline-none"
-              >
-                <option value="">All locations</option>
-                {locationOptions.map((loc) => (
-                  <option key={loc} value={loc}>
-                    {loc}
-                  </option>
-                ))}
-              </select>
-            </li>
-          </ul>
-        </div>
-
-        {/* Price + Head Range (right side) */}
-        <div className="w-full max-w-xs p-3 flex flex-col gap-4">
-          {/* Price Range */}
-          <div>
-            <label className="block text-[11px] font-semibold uppercase tracking-[0.12em] text-cream-500 mb-1.5">
-              Price Range (¢/lb)
-            </label>
+          {/* Location */}
+          <li className="flex flex-col gap-2">
             <div className="flex items-center gap-2">
+              <span className="flex items-center gap-2 text-sm font-medium uppercase tracking-wide text-cream-300">
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  width="12"
+                  height="12"
+                  viewBox="0 0 12 12"
+                  fill="none"
+                  className="h-3 w-3 shrink-0"
+                >
+                  <path
+                    d="M8.75 1.25H3.25C2.14543 1.25 1.25 2.14543 1.25 3.25V8.75C1.25 9.85457 2.14543 10.75 3.25 10.75H8.75C9.85457 10.75 10.75 9.85457 10.75 8.75V3.25C10.75 2.14543 9.85457 1.25 8.75 1.25Z"
+                    stroke="currentColor"
+                    strokeWidth="1.5"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  />
+                  <path
+                    d="M8.25 6H3.75"
+                    stroke="currentColor"
+                    strokeWidth="1.5"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  />
+                </svg>
+                <span className="text-start">Location</span>
+              </span>
+            </div>
+            <select
+              value={location}
+              onChange={(e) => updateParam("location", e.target.value)}
+              className="ml-5 w-[calc(100%-1.25rem)] rounded-lg border border-dirt-600 bg-dirt-950 px-2 py-1.5 text-xs text-cream-100 focus:border-hay-400 focus:outline-none"
+            >
+              <option value="">All locations</option>
+              {locationOptions.map((loc) => (
+                <option key={loc} value={loc}>
+                  {loc}
+                </option>
+              ))}
+            </select>
+          </li>
+
+          {/* Divider */}
+          <li className="border-t border-dirt-700/50 -mx-3" />
+
+          {/* Price Range */}
+          <li className="flex flex-col gap-2">
+            <span className="text-[11px] font-semibold uppercase tracking-[0.12em] text-cream-500">
+              Price Range (¢/lb)
+            </span>
+            <div className="flex items-center gap-1.5">
               <input
                 type="number"
                 placeholder="Min"
                 defaultValue={minPrice ?? ""}
                 onBlur={(e) => updateParam("minPrice", e.target.value)}
-                className="w-24 rounded-lg border border-dirt-600 bg-dirt-950 px-2 py-1.5 text-xs text-cream-100 focus:border-hay-400 focus:outline-none"
+                className="w-full rounded-lg border border-dirt-600 bg-dirt-950 px-2 py-1.5 text-xs text-cream-100 focus:border-hay-400 focus:outline-none"
               />
               <span className="text-cream-500">—</span>
               <input
@@ -566,23 +564,23 @@ export function MarketplaceFilters({
                 placeholder="Max"
                 defaultValue={maxPrice ?? ""}
                 onBlur={(e) => updateParam("maxPrice", e.target.value)}
-                className="w-24 rounded-lg border border-dirt-600 bg-dirt-950 px-2 py-1.5 text-xs text-cream-100 focus:border-hay-400 focus:outline-none"
+                className="w-full rounded-lg border border-dirt-600 bg-dirt-950 px-2 py-1.5 text-xs text-cream-100 focus:border-hay-400 focus:outline-none"
               />
             </div>
-          </div>
+          </li>
 
           {/* Head Count */}
-          <div>
-            <label className="block text-[11px] font-semibold uppercase tracking-[0.12em] text-cream-500 mb-1.5">
+          <li className="flex flex-col gap-2">
+            <span className="text-[11px] font-semibold uppercase tracking-[0.12em] text-cream-500">
               Head Count
-            </label>
-            <div className="flex items-center gap-2">
+            </span>
+            <div className="flex items-center gap-1.5">
               <input
                 type="number"
                 placeholder="Min"
                 defaultValue={minHead ?? ""}
                 onBlur={(e) => updateParam("minHead", e.target.value)}
-                className="w-24 rounded-lg border border-dirt-600 bg-dirt-950 px-2 py-1.5 text-xs text-cream-100 focus:border-hay-400 focus:outline-none"
+                className="w-full rounded-lg border border-dirt-600 bg-dirt-950 px-2 py-1.5 text-xs text-cream-100 focus:border-hay-400 focus:outline-none"
               />
               <span className="text-cream-500">—</span>
               <input
@@ -590,14 +588,14 @@ export function MarketplaceFilters({
                 placeholder="Max"
                 defaultValue={maxHead ?? ""}
                 onBlur={(e) => updateParam("maxHead", e.target.value)}
-                className="w-24 rounded-lg border border-dirt-600 bg-dirt-950 px-2 py-1.5 text-xs text-cream-100 focus:border-hay-400 focus:outline-none"
+                className="w-full rounded-lg border border-dirt-600 bg-dirt-950 px-2 py-1.5 text-xs text-cream-100 focus:border-hay-400 focus:outline-none"
               />
             </div>
-          </div>
+          </li>
 
           {/* Unit Toggle */}
-          <div>
-            <span className="block text-[11px] font-semibold uppercase tracking-[0.12em] text-cream-500 mb-1.5">
+          <li className="flex flex-col gap-2">
+            <span className="text-[11px] font-semibold uppercase tracking-[0.12em] text-cream-500">
               Price display
             </span>
             <div className="flex items-center gap-1 rounded-lg border border-dirt-600 bg-dirt-800/60 p-0.5">
@@ -605,7 +603,7 @@ export function MarketplaceFilters({
                 <button
                   key={u}
                   onClick={() => updateParam("unit", u)}
-                  className={`rounded-md px-2.5 py-1 text-xs font-medium transition-colors ${
+                  className={`flex-1 rounded-md px-2 py-1.5 text-xs font-medium transition-colors ${
                     unit === u
                       ? "bg-gradient-to-b from-hay-400 to-hay-500 text-ink"
                       : "text-cream-400 hover:text-cream-100"
@@ -615,8 +613,8 @@ export function MarketplaceFilters({
                 </button>
               ))}
             </div>
-          </div>
-        </div>
+          </li>
+        </ul>
       </div>
     </section>
   );
