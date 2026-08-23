@@ -21,6 +21,8 @@ function loadRootEnv(): void {
 loadRootEnv();
 
 const nextConfig: NextConfig = {
+  // Standalone output for Docker deployment
+  output: "standalone",
   // The Freebuff preview iframe reaches the dev server via 127.0.0.1, which
   // Next 16 treats as a cross-origin dev request unless explicitly allowed.
   allowedDevOrigins: ["127.0.0.1", "localhost", "livestockp2p.exe.xyz"],

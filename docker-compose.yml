@@ -1,4 +1,21 @@
 services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "3000:3000"
+    environment:
+      - NODE_ENV=production
+      - DATABASE_URL=postgresql://livestock:livestock@postgres:5432/livestock
+      - REDIS_URL=redis://redis:6379
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    restart: unless-stopped
+
   postgres:
     image: postgres:18-alpine
     environment:
@@ -6,10 +23,8 @@ services:
       POSTGRES_PASSWORD: livestock
       POSTGRES_DB: livestock
     ports:
-      # host 55432: a native Postgres service owns 5432 on this machine
-      - "55432:5432"
+      - "5432:5432"
     volumes:
-      # postgres:18+ expects the mount at /var/lib/postgresql (major-version subdirs)
       - pgdata:/var/lib/postgresql
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U livestock -d livestock"]
@@ -23,8 +38,7 @@ services:
     image: redis:8-alpine
     command: ["redis-server", "--appendonly", "yes", "--maxmemory-policy", "noeviction"]
     ports:
-      # host 6380: 6379 is occupied by another project's redis on this machine
-      - "6380:6379"
+      - "6379:6379"
     volumes:
       - redisdata:/data
     healthcheck:

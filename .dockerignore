@@ -1,0 +1,17 @@
+node_modules
+.next
+out
+dist
+.git
+.freebuff
+test-results
+playwright-report
+blob-report
+.auth
+.env
+.env.local
+.env.*.local
+*.log
+.DS_Store
+coverage
+packages/db/src/generated
