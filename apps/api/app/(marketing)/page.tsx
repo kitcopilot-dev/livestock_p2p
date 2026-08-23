@@ -166,29 +166,28 @@ export default async function LandingPage() {
       </section>
 
       {/* CTA */}
-      <section className="card relative overflow-hidden p-8 text-center sm:p-12">
-        <div className="absolute inset-0 bg-gradient-to-br from-barn-600/20 via-transparent to-barn-500/15" aria-hidden />
-        <div className="relative">
-          <h2 className="font-display text-2xl font-bold text-cream-50 sm:text-3xl">
-            Ready to transform your livestock operations?
-          </h2>
-          <p className="mt-4 text-cream-400">
-            Join hundreds of buyers, sellers, and haulers already using LivestockP2P.
-          </p>
-          <div className="mt-8 flex flex-wrap items-center justify-center gap-4">
-            <Link
-              href="/register"
-              className="btn-primary rounded-xl px-8 py-3.5 text-base"
-            >
-              Create Free Account
-            </Link>
-            <Link
-              href="/marketplace"
-              className="btn-ghost rounded-xl px-8 py-3.5 text-base"
-            >
-              Browse Marketplace
-            </Link>
-          </div>
+      <section className="rounded-2xl p-8 text-center sm:p-12" style={{ backgroundColor: 'var(--color-dirt-800)', border: '1px solid var(--color-dirt-600)' }}>
+        <h2 className="font-display text-2xl font-bold sm:text-3xl" style={{ color: 'var(--color-cream-50)' }}>
+          Ready to transform your livestock operations?
+        </h2>
+        <p className="mt-4" style={{ color: 'var(--color-cream-300)' }}>
+          Join hundreds of buyers, sellers, and haulers already using LivestockP2P.
+        </p>
+        <div className="mt-8 flex flex-wrap items-center justify-center gap-4">
+          <Link
+            href="/register"
+            className="rounded-xl px-8 py-3.5 font-semibold shadow-lg transition"
+            style={{ backgroundColor: 'var(--color-hay-400)', color: 'var(--color-ink)' }}
+          >
+            Create Free Account
+          </Link>
+          <Link
+            href="/marketplace"
+            className="rounded-xl border-2 px-8 py-3.5 font-semibold transition"
+            style={{ borderColor: 'var(--color-dirt-600)', color: 'var(--color-cream-100)' }}
+          >
+            Browse Marketplace
+          </Link>
         </div>
       </section>
 
