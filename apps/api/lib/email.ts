@@ -8,6 +8,7 @@
 export interface EmailProvider {
   sendMagicLink(to: string, token: string, baseUrl: string): Promise<void>;
   sendWelcome(to: string, name: string): Promise<void>;
+  sendPasswordReset(to: string, token: string, baseUrl: string): Promise<void>;
 }
 
 /**
@@ -25,6 +26,14 @@ export class ConsoleEmailProvider implements EmailProvider {
 
   async sendWelcome(to: string, name: string): Promise<void> {
     console.log(`[Email] Welcome email sent to ${to} (name=${name})`);
+  }
+
+  async sendPasswordReset(to: string, token: string, baseUrl: string): Promise<void> {
+    const url = `${baseUrl}/reset-password?token=${token}`;
+    console.log("\n" + "=".repeat(60));
+    console.log(`  PASSWORD RESET for ${to}`);
+    console.log(`  ${url}`);
+    console.log("=".repeat(60) + "\n");
   }
 }
 
@@ -48,6 +57,18 @@ export class ResendEmailProvider implements EmailProvider {
 
   async sendWelcome(to: string, name: string): Promise<void> {
     console.log(`[Resend] Welcome email queued for ${to} (${name})`);
+  }
+
+  async sendPasswordReset(to: string, token: string, baseUrl: string): Promise<void> {
+    const url = `${baseUrl}/reset-password?token=${token}`;
+    // TODO: Replace with real Resend call when deploying:
+    // await resend.emails.send({
+    //   from: "noreply@livestockp2p.com",
+    //   to,
+    //   subject: "Reset your Livestock P2P password",
+    //   html: `<p>Click <a href="${url}">here</a> to set a new password. Link expires in 1 hour.</p>`,
+    // });
+    console.log(`[Resend] Password reset email queued for ${to}: ${url}`);
   }
 }
 

@@ -166,6 +166,70 @@ export async function verifyMagicLinkToken(
 }
 
 // ---------------------------------------------------------------------------
+// Password reset (forgot password)
+// ---------------------------------------------------------------------------
+
+/**
+ * Issue a one-time password reset token and deliver the reset link.
+ * Returns ok even when the email doesn't exist to avoid user enumeration;
+ * the reset link is logged by the email provider (console in dev).
+ */
+export async function requestPasswordReset(
+  email: string,
+): Promise<{ ok: true } | { error: string }> {
+  if (isDemoMode()) return { error: "Password reset is disabled in demo mode" };
+  if (getAuthMethod() !== "password") return { error: "Password reset is not available for the current auth method" };
+
+  const normalized = email.trim().toLowerCase();
+  const user = await prisma.user.findUnique({ where: { email: normalized } });
+  if (!user?.passwordHash) return { ok: true }; // no account → same response
+
+  const token = crypto.randomBytes(32).toString("hex");
+  await prisma.passwordResetToken.deleteMany({ where: { email: normalized } });
+  await prisma.passwordResetToken.create({
+    data: {
+      email: normalized,
+      token,
+      expiresAt: new Date(Date.now() + 60 * 60 * 1000), // 1 hour
+    },
+  });
+
+  const baseUrl = process.env.APP_URL ?? "http://localhost:3000";
+  const provider = getEmailProvider();
+  await provider.sendPasswordReset(normalized, token, baseUrl);
+
+  return { ok: true };
+}
+
+/**
+ * Validate a reset token and set a new password. Single-use; the token is
+ * marked used and cannot be replayed.
+ */
+export async function resetPassword(
+  token: string,
+  password: string,
+): Promise<{ ok: true } | { error: string }> {
+  if (isDemoMode()) return { error: "Password reset is disabled in demo mode" };
+  if (password.length < 8) return { error: "Password must be at least 8 characters" };
+
+  const record = await prisma.passwordResetToken.findUnique({ where: { token } });
+  if (!record) return { error: "Invalid or expired reset link" };
+  if (record.usedAt) return { error: "This reset link has already been used" };
+  if (record.expiresAt < new Date()) return { error: "This reset link has expired" };
+
+  const user = await prisma.user.findUnique({ where: { email: record.email } });
+  if (!user?.passwordHash) return { error: "No account found for this reset link" };
+
+  const passwordHash = await bcrypt.hash(password, 12);
+  await prisma.$transaction([
+    prisma.user.update({ where: { id: user.id }, data: { passwordHash } }),
+    prisma.passwordResetToken.update({ where: { token }, data: { usedAt: new Date() } }),
+  ]);
+
+  return { ok: true };
+}
+
+// ---------------------------------------------------------------------------
 // Onboarding completion
 // ---------------------------------------------------------------------------
 

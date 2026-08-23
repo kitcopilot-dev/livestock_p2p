@@ -59,15 +59,18 @@ export function LoginClient({ authMethod }: Props) {
         <form onSubmit={handlePasswordSubmit} className="space-y-4">
           <div>
             <label className="mb-1 block text-xs font-medium text-cream-400">Email</label>
-            <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} required
+            <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} required autoComplete="email"
               className="w-full rounded-xl border border-dirt-600 bg-dirt-800 px-4 py-3 text-sm text-cream-50 placeholder:text-cream-500 focus:border-barn-400 focus:outline-none focus:ring-1 focus:ring-barn-400"
               placeholder="you@example.com" />
           </div>
           <div>
             <label className="mb-1 block text-xs font-medium text-cream-400">Password</label>
-            <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} required
+            <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} required autoComplete="current-password"
               className="w-full rounded-xl border border-dirt-600 bg-dirt-800 px-4 py-3 text-sm text-cream-50 placeholder:text-cream-500 focus:border-barn-400 focus:outline-none focus:ring-1 focus:ring-barn-400"
-              placeholder="\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022" />
+              placeholder={"\u2022".repeat(8)} />
+          </div>
+          <div className="flex justify-end">
+            <Link href="/forgot-password" className="text-xs text-barn-400 hover:text-barn-300">Forgot password?</Link>
           </div>
           {error && <p className="text-sm text-red-400">{error}</p>}
           <button type="submit" className="w-full rounded-xl bg-barn-500 py-3 font-semibold text-on-color transition hover:bg-barn-400">Sign in</button>

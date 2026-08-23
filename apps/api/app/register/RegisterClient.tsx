@@ -77,19 +77,19 @@ export function RegisterClient({ authMethod }: Props) {
         <form onSubmit={handlePasswordSubmit} className="space-y-4">
           <div>
             <label className="mb-1 block text-xs font-medium text-cream-400">Full name</label>
-            <input type="text" value={name} onChange={(e) => setName(e.target.value)} required
+            <input type="text" value={name} onChange={(e) => setName(e.target.value)} required autoComplete="name"
               className="w-full rounded-xl border border-dirt-600 bg-dirt-800 px-4 py-3 text-sm text-cream-50 placeholder:text-cream-500 focus:border-barn-400 focus:outline-none"
               placeholder="John Smith" />
           </div>
           <div>
             <label className="mb-1 block text-xs font-medium text-cream-400">Email</label>
-            <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} required
+            <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} required autoComplete="email"
               className="w-full rounded-xl border border-dirt-600 bg-dirt-800 px-4 py-3 text-sm text-cream-50 placeholder:text-cream-500 focus:border-barn-400 focus:outline-none"
               placeholder="you@example.com" />
           </div>
           <div>
             <label className="mb-1 block text-xs font-medium text-cream-400">Password</label>
-            <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} required
+            <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} required autoComplete="new-password"
               className="w-full rounded-xl border border-dirt-600 bg-dirt-800 px-4 py-3 text-sm text-cream-50 placeholder:text-cream-500 focus:border-barn-400 focus:outline-none"
               placeholder="At least 8 characters" />
           </div>

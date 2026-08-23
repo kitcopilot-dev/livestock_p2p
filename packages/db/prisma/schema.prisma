@@ -756,3 +756,17 @@ model MagicLink {
   @@index([token])
   @@index([email, createdAt])
 }
+
+// One-time password reset tokens for the forgot-password flow. Expire after
+// 1 hour; single-use (usedAt flips on successful reset).
+model PasswordResetToken {
+  id        String   @id @default(cuid())
+  email     String
+  token     String   @unique
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime @default(now())
+
+  @@index([token])
+  @@index([email, createdAt])
+}
