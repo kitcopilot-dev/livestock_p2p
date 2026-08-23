@@ -294,22 +294,42 @@ export default async function MarketplacePage({
         </div>
       </div>
 
-      {/* Species Pills */}
-      <div className="flex flex-wrap items-center gap-1.5">
-        {SPECIES_FILTERS.map((f) => (
-          <Link
-            key={f.value}
-            href={buildHref({ species: f.value })}
-            className={`inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-sm font-medium transition-all ${
-              species === f.value || (!species && !f.value)
-                ? "bg-gradient-to-b from-hay-400 to-hay-500 text-ink shadow-[0_2px_8px_-2px_rgba(224,177,82,0.4)]"
-                : "border border-dirt-600 bg-dirt-800/60 text-cream-300 hover:border-cream-400/40 hover:text-cream-100"
-            }`}
-          >
-            <span>{f.emoji}</span>
-            {f.label}
-          </Link>
-        ))}
+      {/* Species Pills + Price Display */}
+      <div className="flex flex-wrap items-center justify-between gap-4">
+        <div className="flex flex-wrap items-center gap-1.5">
+          {SPECIES_FILTERS.map((f) => (
+            <Link
+              key={f.value}
+              href={buildHref({ species: f.value })}
+              className={`inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-sm font-medium transition-all ${
+                species === f.value || (!species && !f.value)
+                  ? "bg-gradient-to-b from-hay-400 to-hay-500 text-ink shadow-[0_2px_8px_-2px_rgba(224,177,82,0.4)]"
+                  : "border border-dirt-600 bg-dirt-800/60 text-cream-300 hover:border-cream-400/40 hover:text-cream-100"
+              }`}
+            >
+              <span>{f.emoji}</span>
+              {f.label}
+            </Link>
+          ))}
+        </div>
+        <div className="flex items-center gap-2">
+          <span className="text-xs text-cream-500">Price:</span>
+          <div className="flex items-center gap-1 rounded-lg border border-dirt-600 bg-dirt-800/60 p-0.5">
+            {["all", "head", "pound"].map((u) => (
+              <Link
+                key={u}
+                href={buildHref({ unit: u })}
+                className={`rounded-md px-2.5 py-1 text-xs font-medium transition-colors ${
+                  unit === u
+                    ? "bg-gradient-to-b from-hay-400 to-hay-500 text-ink"
+                    : "text-cream-400 hover:text-cream-100"
+                }`}
+              >
+                {u === "all" ? "All" : u === "head" ? "Per head" : "Per lb"}
+              </Link>
+            ))}
+          </div>
+        </div>
       </div>
 
       {/* Sidebar + Listings layout */}

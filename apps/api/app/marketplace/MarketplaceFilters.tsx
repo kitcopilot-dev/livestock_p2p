@@ -542,78 +542,7 @@ export function MarketplaceFilters({
             </select>
           </li>
 
-          {/* Divider */}
-          <li className="border-t border-dirt-700/50 -mx-3" />
 
-          {/* Price Range */}
-          <li className="flex flex-col gap-2">
-            <span className="text-[11px] font-semibold uppercase tracking-[0.12em] text-cream-500">
-              Price Range (¢/lb)
-            </span>
-            <div className="flex items-center gap-1.5">
-              <input
-                type="number"
-                placeholder="Min"
-                defaultValue={minPrice ?? ""}
-                onBlur={(e) => updateParam("minPrice", e.target.value)}
-                className="w-full rounded-lg border border-dirt-600 bg-dirt-950 px-2 py-1.5 text-xs text-cream-100 focus:border-hay-400 focus:outline-none"
-              />
-              <span className="text-cream-500">—</span>
-              <input
-                type="number"
-                placeholder="Max"
-                defaultValue={maxPrice ?? ""}
-                onBlur={(e) => updateParam("maxPrice", e.target.value)}
-                className="w-full rounded-lg border border-dirt-600 bg-dirt-950 px-2 py-1.5 text-xs text-cream-100 focus:border-hay-400 focus:outline-none"
-              />
-            </div>
-          </li>
-
-          {/* Head Count */}
-          <li className="flex flex-col gap-2">
-            <span className="text-[11px] font-semibold uppercase tracking-[0.12em] text-cream-500">
-              Head Count
-            </span>
-            <div className="flex items-center gap-1.5">
-              <input
-                type="number"
-                placeholder="Min"
-                defaultValue={minHead ?? ""}
-                onBlur={(e) => updateParam("minHead", e.target.value)}
-                className="w-full rounded-lg border border-dirt-600 bg-dirt-950 px-2 py-1.5 text-xs text-cream-100 focus:border-hay-400 focus:outline-none"
-              />
-              <span className="text-cream-500">—</span>
-              <input
-                type="number"
-                placeholder="Max"
-                defaultValue={maxHead ?? ""}
-                onBlur={(e) => updateParam("maxHead", e.target.value)}
-                className="w-full rounded-lg border border-dirt-600 bg-dirt-950 px-2 py-1.5 text-xs text-cream-100 focus:border-hay-400 focus:outline-none"
-              />
-            </div>
-          </li>
-
-          {/* Unit Toggle */}
-          <li className="flex flex-col gap-2">
-            <span className="text-[11px] font-semibold uppercase tracking-[0.12em] text-cream-500">
-              Price display
-            </span>
-            <div className="flex items-center gap-1 rounded-lg border border-dirt-600 bg-dirt-800/60 p-0.5">
-              {["all", "head", "pound"].map((u) => (
-                <button
-                  key={u}
-                  onClick={() => updateParam("unit", u)}
-                  className={`flex-1 rounded-md px-2 py-1.5 text-xs font-medium transition-colors ${
-                    unit === u
-                      ? "bg-gradient-to-b from-hay-400 to-hay-500 text-ink"
-                      : "text-cream-400 hover:text-cream-100"
-                  }`}
-                >
-                  {u === "all" ? "All" : u === "head" ? "Per head" : "Per lb"}
-                </button>
-              ))}
-            </div>
-          </li>
         </ul>
       </div>
     </section>
