@@ -39,6 +39,7 @@ const NAV: Array<{ href: string; label: string; roles: UserRole[] }> = [
   { href: "/disputes", label: "Disputes", roles: ["BUYER", "SELLER", "HAULER", "PLATFORM"] },
   { href: "/ledger", label: "Ledger", roles: ["PLATFORM"] },
   { href: "/settings", label: "Settings", roles: ["PLATFORM"] },
+  { href: "/admin", label: "Admin", roles: ["ADMIN", "PLATFORM"] },
 ];
 
 function BrandMark() {
