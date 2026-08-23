@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@livestock/db";
+import { auditLogger } from "@livestock/compliance";
 import { getCurrentUser } from "../../../../../../lib/auth";
 
 export async function POST(
@@ -30,10 +31,29 @@ export async function POST(
     );
   }
 
-  const updated = await prisma.user.update({
-    where: { id: userId },
-    data: { isActive: !targetUser.isActive },
-    select: { id: true, isActive: true },
+  const updated = await prisma.$transaction(async (tx) => {
+    const nextActive = !targetUser.isActive;
+    const after = await tx.user.update({
+      where: { id: userId },
+      data: { isActive: nextActive },
+      select: { id: true, isActive: true },
+    });
+
+    await auditLogger.write(tx, {
+      actorUserId: user.id,
+      actorRole: user.role,
+      action: "user.active_toggle",
+      entityType: "USER",
+      entityId: userId,
+      ipAddress:
+        request.headers.get("x-forwarded-for") ??
+        request.headers.get("x-real-ip"),
+      userAgent: request.headers.get("user-agent"),
+      before: { isActive: targetUser.isActive },
+      after: { isActive: after.isActive },
+    });
+
+    return after;
   });
 
   return NextResponse.json(updated);

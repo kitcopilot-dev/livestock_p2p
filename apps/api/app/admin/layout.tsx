@@ -35,6 +35,12 @@ export default async function AdminLayout({
           Users
         </Link>
         <Link
+          href="/admin/audit"
+          className="text-sm text-cream-400 hover:text-cream-200"
+        >
+          Audit Log
+        </Link>
+        <Link
           href="/settings"
           className="text-sm text-cream-400 hover:text-cream-200"
         >

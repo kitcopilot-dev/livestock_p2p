@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { prisma, type UserRole } from "@livestock/db";
+import { auditLogger } from "@livestock/compliance";
 import { getCurrentUser } from "../../../../../../lib/auth";
 
 const VALID_ROLES: UserRole[] = ["BUYER", "SELLER", "HAULER", "PLATFORM", "ADMIN"];
@@ -26,7 +27,7 @@ export async function POST(
 
   const targetUser = await prisma.user.findUnique({
     where: { id: userId },
-    select: { id: true, role: true },
+    select: { id: true, role: true, roles: true },
   });
 
   if (!targetUser) {
@@ -41,13 +42,31 @@ export async function POST(
     );
   }
 
-  const updated = await prisma.user.update({
-    where: { id: userId },
-    data: {
-      role: role as UserRole,
-      roles: [role as UserRole],
-    },
-    select: { id: true, role: true, roles: true },
+  const updated = await prisma.$transaction(async (tx) => {
+    const after = await tx.user.update({
+      where: { id: userId },
+      data: {
+        role: role as UserRole,
+        roles: [role as UserRole],
+      },
+      select: { id: true, role: true, roles: true },
+    });
+
+    await auditLogger.write(tx, {
+      actorUserId: user.id,
+      actorRole: user.role,
+      action: "user.role_change",
+      entityType: "USER",
+      entityId: userId,
+      ipAddress:
+        request.headers.get("x-forwarded-for") ??
+        request.headers.get("x-real-ip"),
+      userAgent: request.headers.get("user-agent"),
+      before: { role: targetUser.role, roles: targetUser.roles },
+      after: { role: after.role, roles: after.roles },
+    });
+
+    return after;
   });
 
   return NextResponse.json(updated);
