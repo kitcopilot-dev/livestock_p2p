@@ -38,7 +38,7 @@ const NAV: Array<{ href: string; label: string; roles: UserRole[] }> = [
   { href: "/escrows", label: "Escrows", roles: ["BUYER", "SELLER", "HAULER", "PLATFORM"] },
   { href: "/disputes", label: "Disputes", roles: ["BUYER", "SELLER", "HAULER", "PLATFORM"] },
   { href: "/ledger", label: "Ledger", roles: ["PLATFORM"] },
-  { href: "/settings", label: "Settings", roles: ["PLATFORM"] },
+  { href: "/settings", label: "Settings", roles: ["PLATFORM", "ADMIN"] },
   { href: "/admin", label: "Admin", roles: ["ADMIN", "PLATFORM"] },
 ];
 

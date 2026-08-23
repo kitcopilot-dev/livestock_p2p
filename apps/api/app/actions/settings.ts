@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { Prisma, prisma, type PaymentRail } from "@livestock/db";
 import { auditLogger } from "@livestock/compliance";
+import { getCurrentUser, isDemoMode } from "../../lib/auth";
 import { getDemoUser } from "../../lib/demoAuth";
 
 export interface SettingsActionResult {
@@ -17,7 +18,26 @@ function intFrom(formData: FormData, key: string): number | null {
   return Number.isFinite(parsed) ? parsed : null;
 }
 
+function floatFrom(formData: FormData, key: string): number | null {
+  const raw = formData.get(key)?.toString();
+  if (raw === undefined || raw === "") return null;
+  const parsed = Number.parseFloat(raw);
+  return Number.isFinite(parsed) ? parsed : null;
+}
+
 const VALID_RAILS: PaymentRail[] = ["STRIPE", "DWOLLA"];
+
+/**
+ * The acting operator: the demo PLATFORM identity in demo mode, or the
+ * authenticated admin in real-auth mode.
+ */
+async function settingsActor(): Promise<{ id: string; role: string } | null> {
+  if (isDemoMode()) {
+    const demoUser = await getDemoUser();
+    return { id: demoUser.id, role: demoUser.role };
+  }
+  return getCurrentUser();
+}
 
 /**
  * Platform-only settings editor. Validates the money/rail knobs, persists them
@@ -25,8 +45,8 @@ const VALID_RAILS: PaymentRail[] = ["STRIPE", "DWOLLA"];
  * the compliance trail captures who changed platform economics and when.
  */
 export async function updatePlatformSettingsAction(formData: FormData): Promise<SettingsActionResult> {
-  const user = await getDemoUser();
-  if (user.role !== "PLATFORM") {
+  const user = await settingsActor();
+  if (!user || (user.role !== "PLATFORM" && user.role !== "ADMIN")) {
     return { ok: false, error: "Only the platform operator can edit settings" };
   }
 
@@ -34,6 +54,9 @@ export async function updatePlatformSettingsAction(formData: FormData): Promise<
   const weightTolerancePct = intFrom(formData, "weightTolerancePct");
   const freightFeePct = intFrom(formData, "freightFeePct");
   const paymentRail = formData.get("paymentRail")?.toString() as PaymentRail | undefined;
+  // Windows are entered in hours (e.g. 24 / 48) and stored as ms.
+  const inspectionWindowHours = floatFrom(formData, "inspectionWindowHours");
+  const disputeProofWindowHours = floatFrom(formData, "disputeProofWindowHours");
 
   if (platformFeeBps === null || platformFeeBps < 0 || platformFeeBps > 10_000) {
     return { ok: false, error: "Platform fee must be 0–10,000 basis points" };
@@ -47,12 +70,21 @@ export async function updatePlatformSettingsAction(formData: FormData): Promise<
   if (!paymentRail || !VALID_RAILS.includes(paymentRail)) {
     return { ok: false, error: "Payment rail must be STRIPE or DWOLLA" };
   }
+  // 0.017h ≈ 1 minute minimum, 720h = 30 days maximum.
+  if (inspectionWindowHours === null || inspectionWindowHours < 0.017 || inspectionWindowHours > 720) {
+    return { ok: false, error: "Inspection window must be 0.02–720 hours" };
+  }
+  if (disputeProofWindowHours === null || disputeProofWindowHours < 0.017 || disputeProofWindowHours > 720) {
+    return { ok: false, error: "Dispute proof window must be 0.02–720 hours" };
+  }
 
   const updates: Array<{ key: string; value: string }> = [
     { key: "platformFeeBps", value: String(platformFeeBps) },
     { key: "weightTolerancePct", value: String(weightTolerancePct) },
     { key: "freightFeePct", value: String(freightFeePct) },
     { key: "paymentRail", value: paymentRail },
+    { key: "inspectionWindowMs", value: String(Math.round(inspectionWindowHours * 3_600_000)) },
+    { key: "disputeProofWindowMs", value: String(Math.round(disputeProofWindowHours * 3_600_000)) },
   ];
 
   try {
@@ -157,8 +189,8 @@ export async function getRailStatuses(): Promise<RailUserStatus[]> {
 
 /** Onboard all test users on the given rail. Platform-only. */
 export async function onboardTestUsersAction(formData: FormData): Promise<SettingsActionResult> {
-  const user = await getDemoUser();
-  if (user.role !== "PLATFORM") {
+  const user = await settingsActor();
+  if (!user || (user.role !== "PLATFORM" && user.role !== "ADMIN")) {
     return { ok: false, error: "Only the platform operator can onboard test users" };
   }
   const rail = (formData.get("rail")?.toString() ?? "STRIPE") as "STRIPE" | "DWOLLA";

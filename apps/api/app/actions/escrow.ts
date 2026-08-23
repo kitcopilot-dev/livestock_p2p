@@ -16,6 +16,8 @@ import {
 import { scheduleDisputeProofDeadline, scheduleInspectionTimeout } from "@livestock/jobs";
 import { processEscrowSettlement, chargeAndFundEscrow } from "@livestock/payments";
 import { getDemoUser, demoWindowsFromCookie, actorForDemoRole } from "../../lib/demoAuth";
+import { isDemoMode } from "../../lib/auth";
+import { getPlatformSettings } from "../../lib/platformSettings";
 
 export interface ActionResult {
   ok: boolean;
@@ -80,7 +82,9 @@ export async function advanceEscrowAction(
   try {
     const user = await getDemoUser();
     const cookieStore = await cookies();
-    const { inspectionWindowMs, disputeProofWindowMs } = demoWindowsFromCookie(cookieStore);
+    const { inspectionWindowMs, disputeProofWindowMs } = isDemoMode()
+      ? demoWindowsFromCookie(cookieStore)
+      : await getPlatformSettings();
     const tm = new TransactionManager();
     const actor = actorForDemoRole(user.role);
     const base = { actor, userId: user.id };

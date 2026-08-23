@@ -6,6 +6,7 @@ import { cookies } from "next/headers";
 import { prisma, type Species, type Gender, type ListingStatus, type ListingPriceType, type LoadType, type ListingTier } from "@livestock/db";
 import { estimateRouteMiles } from "@livestock/shared";
 import { getDemoUser, demoWindowsFromCookie } from "../../lib/demoAuth";
+import { isDemoMode } from "../../lib/auth";
 import { getPlatformSettings } from "../../lib/platformSettings";
 
 export interface ListingActionResult {
@@ -361,7 +362,9 @@ export async function updateLoadStatusAction(loadId: string, nextStatus: "IN_TRA
     if (load.escrowId && nextStatus === "COMPLETED") {
       const escrow = await prisma.escrowTransaction.findUnique({ where: { id: load.escrowId } });
       if (escrow?.status === "FUNDED" || escrow?.status === "IN_TRANSIT") {
-        const { inspectionWindowMs } = demoWindowsFromCookie(await cookies());
+        const { inspectionWindowMs } = isDemoMode()
+          ? demoWindowsFromCookie(await cookies())
+          : await getPlatformSettings();
         const tm = new (await import("@livestock/domain")).TransactionManager();
         const updated = await tm.markDelivered(load.escrowId, { actor: "HAULER", userId: user.id }, { inspectionWindowMs });
         if (updated.inspectionDeadlineAt) {

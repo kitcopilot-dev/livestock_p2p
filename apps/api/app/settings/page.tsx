@@ -1,15 +1,14 @@
 import { cookies } from "next/headers";
 import { prisma } from "@livestock/db";
 import { auditLogger } from "@livestock/compliance";
-import {
-  INSPECTION_WINDOW_MS,
-  DISPUTE_PROOF_WINDOW_MS,
-  isDemoSpeedMode,
-} from "@livestock/shared";
+import { isDemoSpeedMode } from "@livestock/shared";
 import { getDemoRole, getDemoUser } from "../../lib/demoAuth";
+import { getCurrentUser, isDemoMode } from "../../lib/auth";
 import { ensurePlatformSettings, getPlatformSettings } from "../../lib/platformSettings";
 import { updatePlatformSettingsAction, getRailStatuses, onboardTestUsersAction } from "../actions/settings";
 import { formatDate, bpsToPct, msToHours } from "../../lib/format";
+import { redirect } from "next/navigation";
+import type { UserRole } from "@livestock/db";
 
 export const dynamic = "force-dynamic";
 
@@ -18,6 +17,8 @@ const SETTING_LABELS: Record<string, string> = {
   weightTolerancePct: "Weight tolerance (%)",
   freightFeePct: "Freight estimate (%)",
   paymentRail: "Payout rail",
+  inspectionWindowMs: "Inspection window",
+  disputeProofWindowMs: "Dispute proof window",
 };
 
 /** Extract the stored `value` from an audit before/after JSON blob. */
@@ -29,11 +30,33 @@ function auditValue(v: unknown): string {
   return "—";
 }
 
+/** Audit value with window keys shown in hours instead of raw ms. */
+function auditValueDisplay(key: string, v: unknown): string {
+  const raw = auditValue(v);
+  if (raw === "—") return raw;
+  if (key === "inspectionWindowMs" || key === "disputeProofWindowMs") {
+    const ms = Number(raw);
+    return Number.isFinite(ms) ? msToHours(ms) : raw;
+  }
+  return raw;
+}
+
 export default async function SettingsPage() {
-  const [role, user] = await Promise.all([getDemoRole(), getDemoUser()]);
+  const demo = isDemoMode();
+  const currentUser = await getCurrentUser();
+  const role = demo ? await getDemoRole() : (currentUser?.role ?? null);
+
+  // Real-auth mode: only ADMIN / PLATFORM may reach the settings surface.
+  if (!demo && role !== "ADMIN" && role !== "PLATFORM") {
+    redirect("/dashboard");
+  }
+
+  const user = demo ? await getDemoUser() : currentUser;
+  const actingUser = user ?? { name: null as string | null, email: "", role: "BUYER" as UserRole };
+  const isPlatform = demo ? role === "PLATFORM" : role === "ADMIN" || role === "PLATFORM";
+
   await ensurePlatformSettings();
   const settings = await getPlatformSettings();
-  const isPlatform = role === "PLATFORM";
 
   const [auditBroken, ledgerSummary, settingAudit] = await Promise.all([
     auditLogger.verifyChain(10_000),
@@ -66,7 +89,7 @@ export default async function SettingsPage() {
         </div>
         <span className="pill border-plum-500/60 bg-plum-500/15 text-plum-300">
           <span className="dot bg-plum-400" />
-          acting as {user.name}
+          acting as {actingUser.name ?? actingUser.email}
         </span>
       </div>
 
@@ -74,7 +97,7 @@ export default async function SettingsPage() {
         <div className="card card-pad border-barn-500/40">
           <p className="font-semibold text-cream-100">Operator access only</p>
           <p className="mt-1 text-sm text-cream-400">
-            You are viewing as {user.name}. Switch to the <span className="font-medium text-plum-300">Platform</span> role
+            You are viewing as {actingUser.name ?? actingUser.email}. Switch to the <span className="font-medium text-plum-300">Platform</span> role
             in the header to edit these settings.
           </p>
         </div>
@@ -137,6 +160,19 @@ export default async function SettingsPage() {
               </span>
             </Field>
 
+            <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">
+              <Field label="Inspection window (hours)">
+                <input name="inspectionWindowHours" type="number" min="0.02" max="720" step="1"
+                  defaultValue={settings.inspectionWindowMs / 3_600_000} disabled={!isPlatform} className="input" />
+                <span className="mt-1 block text-[11px] text-cream-500">after delivery, before auto-release</span>
+              </Field>
+              <Field label="Dispute proof window (hours)">
+                <input name="disputeProofWindowHours" type="number" min="0.02" max="720" step="1"
+                  defaultValue={settings.disputeProofWindowMs / 3_600_000} disabled={!isPlatform} className="input" />
+                <span className="mt-1 block text-[11px] text-cream-500">evidence submission after a dispute</span>
+              </Field>
+            </div>
+
             {isPlatform && (
               <button type="submit" className="btn-primary">Save settings</button>
             )}
@@ -145,10 +181,10 @@ export default async function SettingsPage() {
 
         <section className="card card-pad">
           <h2 className="font-display text-lg font-semibold text-cream-50">Time-locked windows</h2>
-          <p className="mt-1 text-sm text-cream-400">Business-rule constants; not runtime-editable.</p>
+          <p className="mt-1 text-sm text-cream-400">Effective values — editable in the economics form above.</p>
           <dl className="mt-4 space-y-4 text-sm">
-            <WindowRow label="Buyer inspection" value={msToHours(INSPECTION_WINDOW_MS)} hint="after delivery, before auto-release" />
-            <WindowRow label="Dispute proof" value={msToHours(DISPUTE_PROOF_WINDOW_MS)} hint="evidence submission after a dispute" />
+            <WindowRow label="Buyer inspection" value={msToHours(settings.inspectionWindowMs)} hint="after delivery, before auto-release" />
+            <WindowRow label="Dispute proof" value={msToHours(settings.disputeProofWindowMs)} hint="evidence submission after a dispute" />
             <WindowRow label="Scheduler" value="BullMQ" hint="survives restarts & partitions" tone="pasture" />
           </dl>
           {demoSpeed && (
@@ -210,10 +246,10 @@ export default async function SettingsPage() {
                     {SETTING_LABELS[row.entityId] ?? row.entityId}
                   </td>
                   <td className="px-5 py-3.5 font-mono text-xs text-cream-400">
-                    {auditValue(row.before)}
+                    {auditValueDisplay(row.entityId, row.before)}
                   </td>
                   <td className="px-5 py-3.5 font-mono text-xs text-pasture-300">
-                    {auditValue(row.after)}
+                    {auditValueDisplay(row.entityId, row.after)}
                   </td>
                   <td className="px-5 py-3.5 text-cream-300">{row.actor?.name ?? row.actorRole ?? "—"}</td>
                   <td className="px-5 py-3.5 text-cream-500">{formatDate(row.createdAt)}</td>

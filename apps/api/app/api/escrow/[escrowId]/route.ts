@@ -9,8 +9,9 @@ import {
 } from "@livestock/domain";
 import { scheduleDisputeProofDeadline, scheduleInspectionTimeout } from "@livestock/jobs";
 import { chargeAndFundEscrow } from "@livestock/payments";
-import { actorForRole, requireUser } from "../../../../lib/auth";
+import { actorForRole, isDemoMode, requireUser } from "../../../../lib/auth";
 import { demoWindowsFromCookie } from "../../../../lib/demoAuth";
+import { getPlatformSettings } from "../../../../lib/platformSettings";
 
 const transitionSchema = z.discriminatedUnion("action", [
   z.object({ action: z.literal("fund") }),
@@ -40,9 +41,12 @@ export async function POST(
     const actor = actorForRole(user.role);
     const base = { actor, userId: user.userId };
 
-    // Read demo speed from cookie
+    // Read effective windows: demo speed cookie in demo mode, else the
+    // operator-configured PlatformSetting values.
     const cookieStore = await cookies();
-    const { inspectionWindowMs, disputeProofWindowMs } = demoWindowsFromCookie(cookieStore);
+    const { inspectionWindowMs, disputeProofWindowMs } = isDemoMode()
+      ? demoWindowsFromCookie(cookieStore)
+      : await getPlatformSettings();
 
     switch (body.data.action) {
       case "fund": {

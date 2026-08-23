@@ -1,13 +1,16 @@
 import { prisma, type PaymentRail } from "@livestock/db";
+import { INSPECTION_WINDOW_MS, DISPUTE_PROOF_WINDOW_MS } from "@livestock/shared";
 
 /**
  * Platform-level configuration knobs. Stored in the PlatformSetting key/value
- * table so an operator can tune escrow economics without a code deploy. Every
- * write is audit-logged (append-only, hash-chained) by the settings action.
+ * table so an operator can tune escrow economics, time-locked windows, and the
+ * payout rail without a code deploy. Every write is audit-logged (append-only,
+ * hash-chained) by the settings action.
  *
- * Keys are intentionally constrained to money/rail knobs. Time windows
- * (24h inspection / 48h dispute proof) are business-rule constants owned by
- * @livestock/shared and are surfaced read-only on the settings page.
+ * The inspection / dispute-proof windows default to the business-rule
+ * constants in @livestock/shared; when present, the stored values override
+ * them for new deadlines (see the escrow API/actions). Demo-speed cookie
+ * overrides still win in demo mode.
  */
 
 export interface PlatformSettings {
@@ -15,6 +18,8 @@ export interface PlatformSettings {
   weightTolerancePct: number;
   freightFeePct: number;
   paymentRail: PaymentRail;
+  inspectionWindowMs: number;
+  disputeProofWindowMs: number;
 }
 
 const DEFAULTS: PlatformSettings = {
@@ -22,6 +27,8 @@ const DEFAULTS: PlatformSettings = {
   weightTolerancePct: 2, // ±2%
   freightFeePct: 3, // freight estimate = 3% of sale
   paymentRail: "STRIPE",
+  inspectionWindowMs: INSPECTION_WINDOW_MS, // 24h
+  disputeProofWindowMs: DISPUTE_PROOF_WINDOW_MS, // 48h
 };
 
 const DESCRIPTIONS: Record<string, string> = {
@@ -29,6 +36,8 @@ const DESCRIPTIONS: Record<string, string> = {
   weightTolerancePct: "Allowed shrink before a weight penalty applies (percent).",
   freightFeePct: "Freight estimate as a percent of sale when a listing becomes a load.",
   paymentRail: "Default payout rail for settlements (STRIPE or DWOLLA).",
+  inspectionWindowMs: "Buyer inspection window after delivery, in milliseconds.",
+  disputeProofWindowMs: "Evidence submission window after a dispute, in milliseconds.",
 };
 
 /** Idempotently seed the settings table with production defaults. */
@@ -65,6 +74,8 @@ export async function getPlatformSettings(): Promise<PlatformSettings> {
     weightTolerancePct: intSetting(map, "weightTolerancePct", DEFAULTS.weightTolerancePct),
     freightFeePct: intSetting(map, "freightFeePct", DEFAULTS.freightFeePct),
     paymentRail: (map.get("paymentRail") as PaymentRail | undefined) ?? DEFAULTS.paymentRail,
+    inspectionWindowMs: intSetting(map, "inspectionWindowMs", DEFAULTS.inspectionWindowMs),
+    disputeProofWindowMs: intSetting(map, "disputeProofWindowMs", DEFAULTS.disputeProofWindowMs),
   };
 }
 
