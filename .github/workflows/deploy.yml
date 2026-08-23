@@ -57,6 +57,13 @@ jobs:
 
       - name: Unit + integration tests
         run: pnpm test
+        env:
+          # Dry-run tests construct StripeProvider.fromEnv, which validates
+          # presence even though PAYMENTS_DRY_RUN means no real calls.
+          PAYMENTS_DRY_RUN: "true"
+          STRIPE_SECRET_KEY: sk_test_dummy
+          STRIPE_PLATFORM_ACCOUNT_ID: acct_dummy
+          STRIPE_WEBHOOK_SECRET: whsec_dummy
 
   # ── Deploy: pull and restart on exe.dev self-hosted runner ─────────────
   deploy:
