@@ -2,6 +2,7 @@ import { JobScheduler, Worker } from "bullmq";
 import { prisma } from "@livestock/db";
 import { createQueues, createProducerConnection, QUEUE_NAMES } from "../queues";
 import { logger } from "../logger";
+import { runTokenCleanup } from "./tokenCleanup";
 import type IORedis from "ioredis";
 
 /**
@@ -26,6 +27,26 @@ export async function runReconciliationSweep(
   const enqueuedInspection = await reenqueueExpiredInspections(queues, now);
   const enqueuedDispute = await reenqueueExpiredDisputeDeadlines(queues, now);
   return { enqueuedInspection, enqueuedDispute };
+}
+
+/**
+ * Full sweep: escrow reconciliation + one-time auth token cleanup. The
+ * recurring sweep cron runs this every 5 minutes.
+ */
+export async function runFullSweep(
+  queues: ReturnType<typeof createQueues>,
+  now: Date = new Date(),
+): Promise<{
+  enqueuedInspection: number;
+  enqueuedDispute: number;
+  deletedResetTokens: number;
+  deletedMagicLinks: number;
+}> {
+  const [recon, tokens] = await Promise.all([
+    runReconciliationSweep(queues, now),
+    runTokenCleanup(now),
+  ]);
+  return { ...recon, ...tokens };
 }
 
 async function reenqueueExpiredInspections(
@@ -94,8 +115,8 @@ export function createSweepWorker(connection: IORedis): Worker<Record<string, ne
   const worker = new Worker<Record<string, never>>(
     QUEUE_NAMES.sweep,
     async () => {
-      const result = await runReconciliationSweep(queues, new Date());
-      logger.info(result, "reconciliation sweep complete");
+      const result = await runFullSweep(queues, new Date());
+      logger.info(result, "sweep complete");
     },
     { connection, concurrency: 1 },
   );
@@ -131,11 +152,16 @@ export async function scheduleSweep(
 }
 
 /** One-off sweep (used by tests and manual ops). */
-export async function runSweepOnce(): Promise<{ enqueuedInspection: number; enqueuedDispute: number }> {
+export async function runSweepOnce(): Promise<{
+  enqueuedInspection: number;
+  enqueuedDispute: number;
+  deletedResetTokens: number;
+  deletedMagicLinks: number;
+}> {
   const connection = createProducerConnection();
   try {
     const queues = createQueues(connection);
-    return await runReconciliationSweep(queues, new Date());
+    return await runFullSweep(queues, new Date());
   } finally {
     await connection.quit();
   }

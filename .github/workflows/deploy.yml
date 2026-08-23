@@ -107,3 +107,12 @@ jobs:
           systemctl --user restart livestock-p2p.service
           sleep 10
           curl -sf http://localhost:3000/ > /dev/null && echo "✅ App is running" || { echo "❌ App failed to start"; journalctl --user -u livestock-p2p.service -n 20 --no-pager; exit 1; }
+
+      - name: Restart workers
+        run: |
+          # BullMQ workers (sweep + time-locks) run as livestock-jobs.service.
+          # Restart so the freshly checked-out code is picked up.
+          export XDG_RUNTIME_DIR=/run/user/$(id -u)
+          systemctl --user restart livestock-jobs.service
+          sleep 8
+          systemctl --user is-active livestock-jobs.service > /dev/null && echo "✅ Workers are running" || { echo "❌ Workers failed to start"; journalctl --user -u livestock-jobs.service -n 20 --no-pager; exit 1; }

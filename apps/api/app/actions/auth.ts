@@ -6,6 +6,7 @@ import bcrypt from "bcryptjs";
 import crypto from "crypto";
 import { prisma, type UserRole } from "@livestock/db";
 import { getEmailProvider } from "../../lib/email";
+import { rateLimit } from "../../lib/rateLimit";
 import { isDemoMode, getAuthMethod, signIn, signOut } from "../../lib/auth";
 
 // ---------------------------------------------------------------------------
@@ -181,6 +182,19 @@ export async function requestPasswordReset(
   if (getAuthMethod() !== "password") return { error: "Password reset is not available for the current auth method" };
 
   const normalized = email.trim().toLowerCase();
+
+  // Rate limit BEFORE the account lookup so the enumeration-safe response
+  // can't be used to burn through the budget without triggering the limit.
+  const limiter = await rateLimit(`pwreset:${normalized}`, {
+    max: 3, // per hour
+    windowSeconds: 3600,
+    cooldownSeconds: 60, // at most one link per minute
+  });
+  if (!limiter.allowed) {
+    const minutes = Math.ceil(limiter.retryAfterSeconds / 60);
+    return { error: `Too many reset requests. Please try again in ${minutes} minute${minutes === 1 ? "" : "s"}.` };
+  }
+
   const user = await prisma.user.findUnique({ where: { email: normalized } });
   if (!user?.passwordHash) return { ok: true }; // no account → same response
 

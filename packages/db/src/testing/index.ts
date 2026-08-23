@@ -20,6 +20,8 @@ export async function truncateAll(): Promise<void> {
       "LedgerEntry",
       "EscrowTransaction",
       "LedgerAccount",
+      "PasswordResetToken",
+      "MagicLink",
       "User"
     RESTART IDENTITY CASCADE;
     SELECT setval('escrow_reference_seq', 1, false);
