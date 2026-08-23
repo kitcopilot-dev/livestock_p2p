@@ -167,22 +167,22 @@ export default async function LandingPage() {
 
       {/* CTA */}
       <section className="rounded-2xl bg-gradient-to-r from-barn-700 to-barn-600 p-8 text-center sm:p-12">
-        <h2 className="font-display text-2xl font-bold text-cream-50 sm:text-3xl">
+        <h2 className="font-display text-2xl font-bold text-on-color sm:text-3xl">
           Ready to transform your livestock operations?
         </h2>
-        <p className="mt-4 text-cream-100">
+        <p className="mt-4 text-on-color/80">
           Join hundreds of buyers, sellers, and haulers already using LivestockP2P.
         </p>
         <div className="mt-8 flex flex-wrap items-center justify-center gap-4">
           <Link
             href="/register"
-            className="rounded-xl bg-cream-50 px-8 py-3.5 font-semibold text-barn-800 shadow-lg transition hover:bg-white hover:shadow-xl"
+            className="rounded-xl bg-on-color px-8 py-3.5 font-semibold text-barn-700 shadow-lg transition hover:shadow-xl"
           >
             Create Free Account
           </Link>
           <Link
             href="/marketplace"
-            className="rounded-xl border-2 border-cream-100/40 px-8 py-3.5 font-semibold text-cream-50 transition hover:border-cream-50 hover:bg-cream-50/10"
+            className="rounded-xl border-2 border-on-color/40 px-8 py-3.5 font-semibold text-on-color transition hover:border-on-color/70 hover:bg-on-color/10"
           >
             Browse Marketplace
           </Link>
