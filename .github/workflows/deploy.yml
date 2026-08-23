@@ -7,7 +7,7 @@ on:
     branches: [main]
 
 env:
-  NODE_VERSION: "22"
+  NODE_VERSION: "24"
 
 jobs:
   # ── CI: typecheck + test ────────────────────────────────────────────────
@@ -18,7 +18,7 @@ jobs:
 
       - uses: pnpm/action-setup@v4
         with:
-          version: 9
+          version: 11
 
       - uses: actions/setup-node@v4
         with:
@@ -33,28 +33,42 @@ jobs:
       - name: Unit tests
         run: pnpm test
 
-  # ── Deploy: SSH into exe.dev VM and run deploy.sh ──────────────────────
+  # ── Deploy: pull and restart on exe.dev self-hosted runner ─────────────
   deploy:
     needs: ci
     if: github.ref == 'refs/heads/main' && github.event_name == 'push'
-    runs-on: ubuntu-latest
+    runs-on: [self-hosted, linux]
     environment: production
     concurrency: deploy-production
     steps:
       - uses: actions/checkout@v4
 
-      - name: Deploy to exe.dev via SSH
-        uses: appleboy/ssh-action@v1
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
         with:
-          host: ${{ secrets.EXE_DEV_HOST }}
-          username: ${{ secrets.EXE_DEV_USER }}
-          key: ${{ secrets.EXE_DEV_SSH_KEY }}
-          script: |
-            cd /home/exedev/livestock_p2p 2>/dev/null || {
-              echo "→ First deploy: cloning repo"
-              git clone --depth 1 https://github.com/${{ github.repository }}.git /home/exedev/livestock_p2p
-              cd /home/exedev/livestock_p2p
-            }
-            git fetch origin main
-            git reset --hard origin/main
-            bash deploy.sh
+          node-version: ${{ env.NODE_VERSION }}
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 11
+
+      - name: Pull latest
+        run: git fetch origin main && git reset --hard origin/main
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Run Prisma migrations
+        run: cd packages/db && pnpm prisma migrate deploy && pnpm prisma generate
+
+      - name: Build
+        run: pnpm --filter @livestock/api build
+
+      - name: Restart app
+        run: |
+          pkill -f "next start" 2>/dev/null || true
+          sleep 2
+          cd apps/api && nohup npx next start -p 3000 -H 0.0.0.0 > /tmp/nextapp.log 2>&1 &
+          sleep 5
+          curl -sf http://localhost:3000/ > /dev/null && echo "✅ App is running" || echo "❌ App failed to start"
