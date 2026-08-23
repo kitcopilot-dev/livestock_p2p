@@ -27,6 +27,10 @@ jobs:
 
       - name: Generate Prisma client
         run: pnpm --filter @livestock/db generate
+        env:
+          # prisma.config.ts requires DATABASE_URL at load time; generate
+          # doesn't connect to the DB, so a dummy value suffices.
+          DATABASE_URL: postgresql://user:pass@localhost:5432/db
 
       - name: Typecheck
         run: pnpm typecheck
