@@ -103,20 +103,29 @@ export default async function RootLayout({ children }: { children: React.ReactNo
                   <DemoSpeedControl current={demoSpeed} />
                 </>
               ) : (
-                <span className="hidden items-center gap-2 rounded-full border border-dirt-600 bg-dirt-800/70 px-3 py-1 text-xs text-cream-300 md:inline-flex">
-                  <span className="h-1.5 w-1.5 rounded-full bg-pasture-400" />
-                  {user.name ?? user.email}
-                </span>
+                currentUser && (
+                  <span className="hidden items-center gap-2 rounded-full border border-dirt-600 bg-dirt-800/70 px-3 py-1 text-xs text-cream-300 md:inline-flex">
+                    <span className="h-1.5 w-1.5 rounded-full bg-pasture-400" />
+                    {user.name ?? user.email}
+                  </span>
+                )
               )}
               <ThemeToggle initial={theme} />
               {isDemoMode() ? (
                 <RoleSwitcher current={role} selected={roles} />
-              ) : (
+              ) : currentUser ? (
                 <form action={logout}>
                   <button type="submit" className="rounded-lg border border-dirt-600 bg-dirt-800/70 px-3 py-1.5 text-xs font-medium text-cream-300 transition hover:bg-dirt-700 hover:text-cream-100">
                     Sign out
                   </button>
                 </form>
+              ) : (
+                <Link
+                  href="/login"
+                  className="rounded-lg bg-barn-500 px-3 py-1.5 text-xs font-semibold text-on-color transition hover:bg-barn-400"
+                >
+                  Sign in
+                </Link>
               )}
             </div>
           </div>

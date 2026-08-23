@@ -108,6 +108,12 @@ export const {
 } = NextAuth({
   adapter: PrismaAdapter(prisma) as any,
   session: { strategy: "jwt" },
+  // Behind the exe.dev proxy / tunnels the Host header differs from the
+  // server's own hostname (0.0.0.0:3000), and NextAuth v5 rejects untrusted
+  // hosts with UntrustedHost errors that break both session reads and the
+  // credentials callback. Trust the Host header so login/register work
+  // behind any proxy or tunnel.
+  trustHost: true,
   pages: {
     signIn: "/login",
   },
