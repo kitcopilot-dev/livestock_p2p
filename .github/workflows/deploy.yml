@@ -1,0 +1,60 @@
+name: CI + Deploy to exe.dev
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+env:
+  NODE_VERSION: "22"
+
+jobs:
+  # ── CI: typecheck + test ────────────────────────────────────────────────
+  ci:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: pnpm
+
+      - run: pnpm install --frozen-lockfile
+
+      - name: Typecheck
+        run: pnpm typecheck
+
+      - name: Unit tests
+        run: pnpm test
+
+  # ── Deploy: SSH into exe.dev VM and run deploy.sh ──────────────────────
+  deploy:
+    needs: ci
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    runs-on: ubuntu-latest
+    environment: production
+    concurrency: deploy-production
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Deploy to exe.dev via SSH
+        uses: appleboy/ssh-action@v1
+        with:
+          host: ${{ secrets.EXE_DEV_HOST }}
+          username: ${{ secrets.EXE_DEV_USER }}
+          key: ${{ secrets.EXE_DEV_SSH_KEY }}
+          script: |
+            cd /home/exedev/livestock_p2p 2>/dev/null || {
+              echo "→ First deploy: cloning repo"
+              git clone --depth 1 https://github.com/${{ github.repository }}.git /home/exedev/livestock_p2p
+              cd /home/exedev/livestock_p2p
+            }
+            git fetch origin main
+            git reset --hard origin/main
+            bash deploy.sh

@@ -23,7 +23,7 @@ loadRootEnv();
 const nextConfig: NextConfig = {
   // The Freebuff preview iframe reaches the dev server via 127.0.0.1, which
   // Next 16 treats as a cross-origin dev request unless explicitly allowed.
-  allowedDevOrigins: ["127.0.0.1", "localhost"],
+  allowedDevOrigins: ["127.0.0.1", "localhost", "livestockp2p.exe.xyz"],
   // Workspace packages ship TypeScript sources; Next transpiles them.
   transpilePackages: [
     "@livestock/shared",
