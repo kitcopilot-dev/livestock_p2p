@@ -46,7 +46,6 @@ interface MarketplaceFiltersProps {
   maxHead: number | null;
   locationOptions: string[];
   activeFilterCount: number;
-  buildHref: (overrides: Record<string, string>) => string;
 }
 
 export function MarketplaceFilters({
@@ -61,7 +60,6 @@ export function MarketplaceFilters({
   maxHead,
   locationOptions,
   activeFilterCount,
-  buildHref,
 }: MarketplaceFiltersProps) {
   const router = useRouter();
   const searchParams = useSearchParams();
