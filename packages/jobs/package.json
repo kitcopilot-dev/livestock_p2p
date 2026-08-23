@@ -1,0 +1,31 @@
+{
+  "name": "@livestock/jobs",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "dev": "tsx watch --env-file=../../.env src/workerIndex.ts",
+    "start": "tsx --env-file=../../.env src/workerIndex.ts",
+    "typecheck": "tsc --noEmit -p tsconfig.json",
+    "test": "vitest run --passWithNoTests"
+  },
+  "dependencies": {
+    "@livestock/compliance": "workspace:*",
+    "@livestock/db": "workspace:*",
+    "@livestock/domain": "workspace:*",
+    "@livestock/payments": "workspace:*",
+    "@livestock/shared": "workspace:*",
+    "bullmq": "^6.1.2",
+    "ioredis": "^6.0.0",
+    "pino": "^10.3.1"
+  },
+  "devDependencies": {
+    "@types/node": "^26.2.0",
+    "tsx": "^4.23.12",
+    "typescript": "^7.0.2",
+    "vitest": "^4.1.11"
+  }
+}

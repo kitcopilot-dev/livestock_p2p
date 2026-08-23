@@ -1,0 +1,43 @@
+LIVESTOCK P2P — SAMPLE HEALTH CERTIFICATE
+==========================================
+
+Certificate No:   HC-2026-08421
+Issued:          August 14, 2026
+Veterinarian:    Dr. M. Rhodes, DVM (OK License #4123)
+Accredited:      USDA Category II — Accredited Veterinarian
+
+LOT:             Angus steers — 120 head
+Origin:          Oklahoma City, OK 73102
+Destination:     Buyer delivery point
+
+HEALTH DECLARATION
+------------------
+All animals in this lot were examined within 30 days of shipment and found
+to be free of clinical signs of infectious, contagious, or communicable
+diseases, including:
+
+  * Brucellosis          — negative (test 07/28/2026)
+  * Tuberculosis         — negative (test 07/28/2026)
+  * BVD-PI               — negative (persistently infected screening)
+  * Trichomoniasis       — not applicable (steers)
+
+VACCINATION HISTORY
+-------------------
+  * 7-way blackleg (Clostridial) — booster 06/15/2026
+  * IBR/BVD/PI3/BRSV             — modified live, 06/15/2026
+  * Pasteurella (Mannheimia)     — 06/15/2026
+
+TREATMENT / DRUG WITHDRAWAL
+---------------------------
+No animals treated within the withdrawal period. All drug withdrawal times
+have been observed. No antibiotic residues expected.
+
+TRANSPORT NOTES
+---------------
+Water and rest available every 12 hours. Full-load transport, bedding
+provided. Estimated transit time under 8 hours.
+
+This certificate is provided as a DEMO PLACEHOLDER for the Livestock P2P
+platform and does not constitute an official USDA document.
+
+                                  — Dr. M. Rhodes, DVM

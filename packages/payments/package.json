@@ -1,0 +1,26 @@
+{
+  "name": "@livestock/payments",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit -p tsconfig.json",
+    "test": "vitest run --passWithNoTests"
+  },
+  "dependencies": {
+    "@livestock/compliance": "workspace:*",
+    "@livestock/db": "workspace:*",
+    "@livestock/domain": "workspace:*",
+    "@livestock/shared": "workspace:*",
+    "dwolla-v2": "^3.4.2",
+    "stripe": "^22.5.0"
+  },
+  "devDependencies": {
+    "@types/node": "^26.2.0",
+    "typescript": "^7.0.2",
+    "vitest": "^4.1.11"
+  }
+}

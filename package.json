@@ -1,0 +1,21 @@
+{
+  "name": "livestock-marketplace",
+  "version": "0.1.0",
+  "private": true,
+  "packageManager": "pnpm@11.22.0",
+  "engines": {
+    "node": ">=24"
+  },
+  "scripts": {
+    "typecheck": "pnpm -r typecheck",
+    "test": "pnpm -r test",
+    "db:up": "docker compose up -d postgres redis",
+    "db:down": "docker compose down",
+    "dev:api": "pnpm --filter @livestock/api dev",
+    "dev:workers": "pnpm --filter @livestock/jobs dev"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.62.1",
+    "playwright": "^1.62.1"
+  }
+}

@@ -1,0 +1,757 @@
+// ============================================================================
+// Livestock Marketplace — persistence schema
+// PostgreSQL 18, Prisma ORM 7 (prisma-client generator, Rust-free client).
+//
+// Financial integrity notes:
+//  - LedgerAccount holds NO stored balance. Balances are derived from the
+//    LedgerEntry stream via the ledger_account_balances view (raw migration).
+//  - LedgerEntry invariants (positive amount, debit != credit, currency match)
+//    are enforced by a BEFORE INSERT/UPDATE trigger (raw migration) so that no
+//    application bug can post an unbalanced journal entry.
+//  - AuditLog is append-only: an UPDATE/DELETE trigger rejects mutations.
+//  - EscrowTransaction carries a `version` column for optimistic concurrency;
+//    the TransactionManager additionally uses SELECT ... FOR UPDATE under
+//    SERIALIZABLE isolation for the money-critical transitions.
+// ============================================================================
+
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// ---------------------------------------------------------------------------
+// Enums
+// ---------------------------------------------------------------------------
+
+enum UserRole {
+  BUYER
+  SELLER
+  HAULER
+  PLATFORM
+}
+
+enum KycStatus {
+  NOT_STARTED
+  PENDING
+  APPROVED
+  REJECTED
+  EXPIRED
+}
+
+enum LedgerAccountType {
+  // FBO / escrow balance held by the platform
+  PLATFORM_ESCROW
+  // Recognized platform fee revenue
+  PLATFORM_REVENUE
+  // Internal wallet mapped 1:1 to a user's external rail account
+  USER_WALLET
+  // Unallocated funds awaiting reconciliation (failed-payout sink)
+  SUSPENSE
+}
+
+enum LedgerEntryType {
+  FUNDING
+  SETTLEMENT
+  REVERSAL
+  CHARGEBACK
+  ADJUSTMENT
+}
+
+enum LedgerEntryStatus {
+  // Posted before the external rail call; flipped to COMMITTED once the rail
+  // reports success. PENDING entries are not included in balance views.
+  PENDING
+  COMMITTED
+  FAILED
+  REVERSED
+}
+
+enum EscrowStatus {
+  DRAFT
+  FUNDED
+  IN_TRANSIT
+  DELIVERED
+  INSPECTION_PERIOD
+  DISPUTED
+  ARBITRATION_PROCESSING
+  RESOLVED_DISBURSED
+  REFUNDED
+  CANCELLED
+}
+
+enum DisputeStatus {
+  OPEN
+  ARBITRATION_PROCESSING
+  RESOLVED_BUYER_WINS
+  RESOLVED_SELLER_WINS
+  RESOLVED_SPLIT
+}
+
+enum DisputeReason {
+  QUALITY
+  WEIGHT_SHRINK
+  VET_CERTIFICATION
+  NON_DELIVERY
+  DAMAGED
+  OTHER
+}
+
+enum EvidenceSource {
+  UPLOAD
+  SCALE_TICKET_OCR
+  VET_TELEHEALTH
+  TRUEPIC_CAPTURE
+}
+
+enum EvidenceFileType {
+  IMAGE
+  PDF
+  JSON
+  VIDEO
+}
+
+enum PaymentRail {
+  STRIPE
+  DWOLLA
+}
+
+enum PaymentIntentStatus {
+  PENDING
+  SUCCEEDED
+  FAILED
+  CANCELED
+}
+
+enum MilestoneKind {
+  CREATED
+  FUNDED
+  PICKUP
+  DELIVERED
+  INSPECTION_STARTED
+  INSPECTION_DEADLINE
+  DISPUTE_FILED
+  DISPUTE_PROOF_DEADLINE
+  DISPUTE_RESOLVED
+  RELEASED
+  REFUNDED
+  CANCELLED
+  SETTLEMENT_FAILED
+}
+
+enum JobKind {
+  INSPECTION_TIMEOUT
+  DISPUTE_PROOF_DEADLINE
+  SETTLEMENT_RETRY
+  SETTLEMENT_EXECUTION
+}
+enum Species {
+  CATTLE
+  HOG
+  SHEEP
+  GOAT
+}
+
+enum Marketplace {
+  LIVE
+  PROCESSOR
+}
+
+enum ProcessorCategory {
+  BOXED_BEEF
+  CARCASS
+  GROUND_BEEF
+  JERKY
+  SAUSAGE
+  DAIRY
+  OTHER
+}
+
+enum ListingStatus {
+  ACTIVE
+  UNDER_OFFER
+  SOLD
+  EXPIRED
+  DRAFT
+}
+
+enum LoadStatus {
+  OPEN
+  ASSIGNED
+  IN_TRANSIT
+  COMPLETED
+  CANCELLED
+}
+
+enum LoadBidStatus {
+  PENDING
+  ACCEPTED
+  REJECTED
+  WITHDRAWN
+}
+
+enum Gender {
+  STEER
+  HEIFER
+  BULL
+  BARROW
+  GILT
+  WETHER
+  EWE
+  RAM
+  MIX
+}
+
+
+// ---------------------------------------------------------------------------
+enum ListingPriceType {
+  PER_POUND
+  PER_HEAD
+}
+
+// Seller-supplied listing media. Documents carry a kind so the UI can label
+// them (health certs, scale tickets, registrations) and the compliance layer
+// can flag verified originals for evidence.
+enum ListingDocumentKind {
+  HEALTH_CERT
+  VET_RECORD
+  SCALE_TICKET
+  REGISTRATION
+  PROOF_OF_ORIGIN
+  OTHER
+}
+
+enum OfferStatus {
+  PENDING
+  ACCEPTED
+  CONFIRMED
+  DECLINED
+  WITHDRAWN
+  EXPIRED
+}
+
+enum OfferPriceType {
+  PER_HEAD
+  PER_POUND
+}
+
+enum LoadType {
+  FULL_LOAD
+  LTL
+}
+
+enum ListingTier {
+  COMMERCIAL
+  REGISTERED
+}
+
+// Models
+// ---------------------------------------------------------------------------
+
+model User {
+  id                       String   @id @default(cuid())
+  email                    String   @unique
+  name                     String?
+  role                     UserRole
+  // Secondary role set: a user may hold several roles (e.g. a seller who also
+  // hauls). `role` remains the primary/default role for actor mapping; `roles`
+  // drives the unioned navigation and home view.
+  roles                    UserRole[] @default([])
+  kycStatus                KycStatus @default(NOT_STARTED)
+  stripeConnectedAccountId String?  @unique
+  dwollaCustomerId         String?  @unique
+  // AES-256-GCM encrypted at the application layer; never plaintext
+  plaidAccessTokenEnc      String?
+  // Auth fields
+  passwordHash          String?
+  image                 String?
+  // Onboarding
+  onboardingCompletedAt DateTime?
+  businessName          String?
+  phone                 String?
+  // Role-specific
+  dotNumber             String?   // hauler
+  einTaxId              String?   // seller
+  isActive                 Boolean  @default(true)
+  createdAt                DateTime @default(now())
+  updatedAt                DateTime @updatedAt
+
+  ledgerAccounts  LedgerAccount[]
+  escrowsAsBuyer  EscrowTransaction[] @relation("EscrowBuyer")
+  escrowsAsSeller EscrowTransaction[] @relation("EscrowSeller")
+  escrowsAsHauler EscrowTransaction[] @relation("EscrowHauler")
+  milestones      Milestone[]
+  disputesFiled   AutomatedDispute[] @relation("DisputeFiler")
+  evidenceUploaded Evidence[]        @relation("EvidenceUploader")
+  auditLogs       AuditLog[]
+  listings         Listing[] @relation("ListingsBySeller")
+  loads            Load[] @relation("LoadsByHauler")
+  postedLoads      Load[] @relation("LoadsPostedBy")
+  loadBids         LoadBid[] @relation("LoadBidsByHauler")
+  platformSettingsUpdated PlatformSetting[] @relation("PlatformSettingUpdater")
+  accounts           Account[]
+  sessions           Session[]
+  offersMade         Offer[]           @relation("OffersByBuyer")
+  offersReceived     Offer[]           @relation("OffersBySeller")
+}
+
+model LedgerAccount {
+  id            String   @id @default(cuid())
+  ownerType     String // "USER" | "PLATFORM"
+  ownerUserId   String?
+  accountType   LedgerAccountType
+  currency      String   @default("USD")
+  // Rail-side destination: Stripe connected account id, Dwolla funding source
+  // URL, or null for internal-only accounts (SUSPENSE, PLATFORM_REVENUE).
+  externalAccountRef String?
+  isActive      Boolean  @default(true)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  ownerUser User?       @relation(fields: [ownerUserId], references: [id], onDelete: Restrict)
+  debits    LedgerEntry[] @relation("LedgerDebit")
+  credits   LedgerEntry[] @relation("LedgerCredit")
+
+  @@unique([ownerType, ownerUserId, accountType])
+  @@index([accountType])
+}
+
+model LedgerEntry {
+  id               String   @id @default(cuid())
+  debitAccountId   String
+  creditAccountId  String
+  amountCents      Int
+  currency         String   @default("USD")
+  entryType        LedgerEntryType
+  status           LedgerEntryStatus @default(COMMITTED)
+  // Business reference (escrow id, dispute id, ...) for traceability
+  transactionId    String?
+  idempotencyKey   String   @unique
+  description      String?
+  reversalOfEntryId String?
+  createdAt        DateTime @default(now())
+  committedAt      DateTime?
+
+  debitAccount  LedgerAccount @relation("LedgerDebit", fields: [debitAccountId], references: [id], onDelete: Restrict)
+  creditAccount LedgerAccount @relation("LedgerCredit", fields: [creditAccountId], references: [id], onDelete: Restrict)
+  reversalOf    LedgerEntry?  @relation("LedgerReversal", fields: [reversalOfEntryId], references: [id], onDelete: Restrict)
+  reversedBy    LedgerEntry[] @relation("LedgerReversal")
+
+  @@index([transactionId])
+  @@index([debitAccountId, createdAt])
+  @@index([creditAccountId, createdAt])
+  @@index([status])
+}
+
+model EscrowTransaction {
+  id                   String   @id @default(cuid())
+  reference            String   @unique
+  buyerId              String
+  sellerId             String
+  haulerId             String
+  status               EscrowStatus @default(DRAFT)
+  currency             String   @default("USD")
+  saleAmountCents      Int
+  contractedWeightLbs  Int
+  deliveredWeightLbs   Int?
+  weightTolerancePct   Int      @default(2)
+  // saleAmountCents * 1_000_000 / contractedWeightLbs (integer micro-cents/lb)
+  // so shrink penalties stay exact without floating point.
+  pricePerLbMicros     Int
+  freightFeeCents      Int
+  platformFeeBps       Int
+  platformFeeCents     Int?
+  shrinkPenaltyCents   Int?
+  inspectionDeadlineAt DateTime?
+  disputeProofDeadlineAt DateTime?
+  settlementAt         DateTime?
+  version              Int      @default(1)
+  createdAt            DateTime @default(now())
+  updatedAt            DateTime @updatedAt
+
+  buyer  User @relation("EscrowBuyer", fields: [buyerId], references: [id], onDelete: Restrict)
+  seller User @relation("EscrowSeller", fields: [sellerId], references: [id], onDelete: Restrict)
+  hauler User @relation("EscrowHauler", fields: [haulerId], references: [id], onDelete: Restrict)
+
+  milestones       Milestone[]
+  disputes         AutomatedDispute[]
+  evidence         Evidence[]
+  paymentIntents   PaymentIntent[]
+  scheduleReceipts ScheduleReceipt[]
+  load             Load?
+  offer            Offer?
+
+  @@index([status, inspectionDeadlineAt])
+  @@index([buyerId])
+  @@index([sellerId])
+  @@index([haulerId])
+}
+
+model Milestone {
+  id          String   @id @default(cuid())
+  escrowId    String
+  kind        MilestoneKind
+  occurredAt  DateTime @default(now())
+  dueAt       DateTime?
+  actorUserId String?
+  metadata    Json?
+
+  escrow EscrowTransaction @relation(fields: [escrowId], references: [id], onDelete: Cascade)
+  actor  User?             @relation(fields: [actorUserId], references: [id], onDelete: Restrict)
+
+  @@unique([escrowId, kind])
+}
+
+model AutomatedDispute {
+  id               String   @id @default(cuid())
+  escrowId         String
+  filedByUserId    String
+  reason           DisputeReason
+  status           DisputeStatus @default(OPEN)
+  description      String?
+  verdict          String?
+  // Final settlement vector in cents, e.g.
+  // { buyerRefundCents, sellerPayoutCents, haulerPayoutCents, platformFeeCents }
+  settlementVector Json?
+  filedAt          DateTime @default(now())
+  resolvedAt       DateTime?
+
+  escrow  EscrowTransaction @relation(fields: [escrowId], references: [id], onDelete: Restrict)
+  filedBy User              @relation("DisputeFiler", fields: [filedByUserId], references: [id], onDelete: Restrict)
+  evidence Evidence[]
+
+  @@index([escrowId])
+}
+
+model Evidence {
+  id                    String   @id @default(cuid())
+  disputeId             String
+  escrowId              String
+  uploaderId            String
+  source                EvidenceSource
+  fileType              EvidenceFileType
+  storageUri            String
+  fileSha256            String
+  // Verified metadata flags — only set by markEvidenceVerified() after a
+  // provider-signed response (Truepic, OCR engine, vet telehealth API).
+  isVetCertified        Boolean  @default(false)
+  isScaleTicketVerified Boolean  @default(false)
+  scaleNetWeightLbs     Int?
+  ocrConfidence         Float?
+  metadata              Json?
+  uploadedAt            DateTime @default(now())
+
+  dispute  AutomatedDispute @relation(fields: [disputeId], references: [id], onDelete: Cascade)
+  escrow   EscrowTransaction @relation(fields: [escrowId], references: [id], onDelete: Restrict)
+  uploader User              @relation("EvidenceUploader", fields: [uploaderId], references: [id], onDelete: Restrict)
+
+  @@index([disputeId])
+  @@index([fileSha256])
+}
+
+model PaymentIntent {
+  id                    String   @id @default(cuid())
+  escrowId              String
+  rail                  PaymentRail
+  // CHARGE | TRANSFER | REFUND | REVERSAL
+  railOperation         String
+  railReferenceId       String?
+  status                PaymentIntentStatus @default(PENDING)
+  idempotencyKey        String   @unique
+  amountCents           Int
+  currency              String   @default("USD")
+  destinationAccountRef String?
+  sourceAccountRef      String?
+  errorCode             String?
+  errorMessage          String?
+  attemptNumber         Int      @default(1)
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
+
+  escrow EscrowTransaction @relation(fields: [escrowId], references: [id], onDelete: Restrict)
+
+  @@index([escrowId])
+  @@index([status])
+}
+
+model ScheduleReceipt {
+  id           String   @id @default(cuid())
+  escrowId     String
+  jobKind      JobKind
+  scheduledFor DateTime
+  status       String   @default("SCHEDULED") // SCHEDULED | COMPLETED | SKIPPED | FAILED
+  bullmqJobId  String?
+  completedAt  DateTime?
+
+  escrow EscrowTransaction @relation(fields: [escrowId], references: [id], onDelete: Restrict)
+
+  @@unique([escrowId, jobKind])
+  @@index([jobKind, status])
+}
+
+model AuditLog {
+  id          String   @id @default(cuid())
+  actorUserId String?
+  actorRole   String?
+  action      String
+  entityType  String
+  entityId    String
+  ipAddress   String?
+  userAgent   String?
+  before      Json?
+  after       Json?
+  // Hash chain: hash = sha256(prevHash + canonicalJson(payload))
+  prevHash    String
+  hash        String   @unique
+  createdAt   DateTime @default(now())
+
+  actor User? @relation(fields: [actorUserId], references: [id], onDelete: Restrict)
+
+  @@index([entityType, entityId, createdAt])
+  @@index([createdAt])
+}
+
+model IdempotencyRecord {
+  id          String   @id @default(cuid())
+  key         String   @unique
+  requestHash String
+  status      String // PROCESSING | COMPLETED
+  response    Json?
+  createdAt   DateTime @default(now())
+  expiresAt   DateTime
+
+  @@index([expiresAt])
+}
+
+
+model Listing {
+  id              String        @id @default(cuid())
+  sellerId        String
+  species         Species
+  breed           String
+  headCount       Int
+  avgWeightLbs    Int
+  pricePerLbCents Int
+  marketplace       Marketplace         @default(LIVE)
+  category          ProcessorCategory?
+  priceType         ListingPriceType @default(PER_POUND)
+  pricePerHeadCents Int?
+  loadType          LoadType         @default(FULL_LOAD)
+  tier              ListingTier      @default(COMMERCIAL)
+  currency        String        @default("USD")
+  description     String        @db.Text
+  location        String
+  zipCode         String?
+  gender          Gender?
+  ageRange        String?
+  healthStatus    String?
+  // ---- Cattle / livestock classification fields (the "Cattle Fields" table) ----
+  origin          String?
+  registry        String?
+  listingClass    String?
+  subclass        String?
+  harvest         String?
+  husbandry       String?
+  frame           String?
+  vaccines        String?
+  condition       String?
+  fertility       String?
+  registryType    String?
+  birthWeightLbs  Int?
+  imageUrl        String?
+  galleryUrls     String[]
+  status          ListingStatus @default(ACTIVE)
+  viewCount       Int           @default(0)
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+
+  seller User @relation("ListingsBySeller", fields: [sellerId], references: [id], onDelete: Restrict)
+  offers OfferItem[]
+  documents ListingDocument[]
+
+  @@index([status, species])
+  @@index([status, location])
+  @@index([sellerId])
+}
+
+// Seller-uploaded documents attached to a listing: health certificates,
+// vet records, scale tickets, registration papers. Files live under
+// public/uploads/listings/<listingId>/ and are referenced by URL.
+model ListingDocument {
+  id         String              @id @default(cuid())
+  listingId  String
+  kind       ListingDocumentKind @default(OTHER)
+  fileName   String
+  url        String
+  mimeType   String?
+  sizeBytes  Int?
+  uploadedAt DateTime            @default(now())
+
+  listing Listing @relation(fields: [listingId], references: [id], onDelete: Cascade)
+
+  @@index([listingId])
+}
+
+model Load {
+  id             String     @id @default(cuid())
+  escrowId       String?    @unique
+  origin         String
+  destination    String
+  distanceMiles  Int?
+  marketplace     Marketplace     @default(LIVE)
+  loadType       LoadType
+  species        Species
+  headCount      Int
+  totalWeightLbs Int
+  freightPayCents Int
+  status         LoadStatus @default(OPEN)
+  haulerId       String?
+  posterId       String?
+  acceptedAt     DateTime?
+  completedAt    DateTime?
+  dueAt          DateTime?
+  paidAt         DateTime?
+  createdAt      DateTime   @default(now())
+  updatedAt      DateTime   @updatedAt
+
+  escrow EscrowTransaction? @relation(fields: [escrowId], references: [id], onDelete: Restrict)
+  hauler User?             @relation("LoadsByHauler", fields: [haulerId], references: [id], onDelete: SetNull)
+  poster User?             @relation("LoadsPostedBy", fields: [posterId], references: [id], onDelete: SetNull)
+  bids   LoadBid[]
+
+  @@index([status])
+  @@index([haulerId])
+}
+
+model LoadBid {
+  id         String        @id @default(cuid())
+  loadId     String
+  haulerId   String
+  amountCents Int
+  status     LoadBidStatus @default(PENDING)
+  createdAt  DateTime      @default(now())
+  updatedAt  DateTime      @updatedAt
+
+  load   Load @relation(fields: [loadId], references: [id], onDelete: Cascade)
+  hauler User @relation("LoadBidsByHauler", fields: [haulerId], references: [id], onDelete: Cascade)
+
+  @@unique([loadId, haulerId])
+  @@index([loadId, status])
+  @@index([haulerId])
+}
+
+model Offer {
+  id                 String        @id @default(cuid())
+  reference          String        @unique
+  buyerId            String
+  sellerId           String
+  status             OfferStatus   @default(PENDING)
+  currency           String        @default("USD")
+  priceType          OfferPriceType
+  totalAmountCents   Int
+  message            String?       @db.Text
+  transportNeeded    Boolean       @default(false)
+  destinationFacility String?
+  sellerApprovedAt   DateTime?
+  buyerConfirmedAt   DateTime?
+  declinedReason     String?
+  escrowId           String?       @unique
+  createdAt          DateTime      @default(now())
+  updatedAt          DateTime      @updatedAt
+
+  buyer  User                @relation("OffersByBuyer", fields: [buyerId], references: [id], onDelete: Restrict)
+  seller User                @relation("OffersBySeller", fields: [sellerId], references: [id], onDelete: Restrict)
+  items  OfferItem[]
+  escrow EscrowTransaction?  @relation(fields: [escrowId], references: [id], onDelete: SetNull)
+
+  @@index([buyerId, status])
+  @@index([sellerId, status])
+  @@index([status, createdAt])
+}
+
+model OfferItem {
+  id             String   @id @default(cuid())
+  offerId        String
+  listingId      String
+  quantity       Int
+  unitPriceCents Int
+  lineTotalCents Int
+  createdAt      DateTime @default(now())
+
+  offer   Offer   @relation(fields: [offerId], references: [id], onDelete: Cascade)
+  listing Listing @relation(fields: [listingId], references: [id], onDelete: Restrict)
+
+  @@unique([offerId, listingId])
+  @@index([listingId])
+}
+
+model PlatformSetting {
+  key             String   @id
+  value           String
+  description     String?
+  updatedByUserId String?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  updatedBy User? @relation("PlatformSettingUpdater", fields: [updatedByUserId], references: [id], onDelete: SetNull)
+
+  @@index([updatedAt])
+}
+
+// ---------------------------------------------------------------------------
+// Auth models (NextAuth.js v5 + magic link)
+// ---------------------------------------------------------------------------
+
+model Account {
+  id                String  @id @default(cuid())
+  userId            String
+  type              String  // "oauth" | "credentials" | "magic_link"
+  provider          String  // "google", "github", "credentials", "magic_link"
+  providerAccountId String
+  refresh_token     String?
+  access_token      String?
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String?
+  session_state     String?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+  @@index([userId])
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
+model VerificationToken {
+  identifier String
+  token      String   @unique
+  expires    DateTime
+
+  @@unique([identifier, token])
+}
+
+model MagicLink {
+  id        String   @id @default(cuid())
+  email     String
+  token     String   @unique
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime @default(now())
+
+  @@index([token])
+  @@index([email, createdAt])
+}

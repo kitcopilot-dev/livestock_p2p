@@ -1,0 +1,247 @@
+@import "tailwindcss";
+
+/* ============================================================
+   RANCH THEME — warm earth tones for a livestock marketplace
+   ============================================================ */
+@theme {
+  /* Surfaces — warm near-black browns */
+  --color-dirt-950: #120c07;
+  --color-dirt-900: #1a1109;
+  --color-dirt-850: #221710;
+  --color-dirt-800: #2c1f14;
+  --color-dirt-700: #3d2c1c;
+  --color-dirt-600: #4f3a26;
+
+  /* Text — warm creams */
+  --color-cream-50: #fbf7ef;
+  --color-cream-100: #f3ecdd;
+  --color-cream-200: #e5d8bf;
+  --color-cream-300: #cebb9c;
+  --color-cream-400: #a99874;
+  --color-cream-500: #85745a;
+
+  /* Barn red */
+  --color-barn-200: #f6c4ae;
+  --color-barn-300: #ef9a77;
+  --color-barn-400: #e06f46;
+  --color-barn-500: #c9502e;
+  --color-barn-600: #a83f23;
+  --color-barn-700: #85331d;
+
+  /* Hay gold */
+  --color-hay-100: #fbeecb;
+  --color-hay-200: #f6dfa0;
+  --color-hay-300: #eecd7a;
+  --color-hay-400: #e0b152;
+  --color-hay-500: #c6933a;
+  --color-hay-600: #a1742c;
+
+  /* Pasture / sage green */
+  --color-pasture-200: #c3d9bd;
+  --color-pasture-300: #a3c19c;
+  --color-pasture-400: #7ea776;
+  --color-pasture-500: #5c8a55;
+  --color-pasture-600: #4a7145;
+  --color-pasture-700: #3a5936;
+
+  /* Denim blue */
+  --color-denim-200: #b7d2e6;
+  --color-denim-300: #93b9d5;
+  --color-denim-400: #6b9cbe;
+  --color-denim-500: #4a7fa6;
+  --color-denim-600: #3a6889;
+  --color-denim-700: #2f5470;
+
+  /* Plum (arbitration) */
+  --color-plum-300: #c9a8d8;
+  --color-plum-400: #ad7fc4;
+  --color-plum-500: #8f5faa;
+  --color-plum-600: #744c8c;
+
+  /* Fonts */
+  --font-sans: "Inter", ui-sans-serif, system-ui, -apple-system, sans-serif;
+  --font-display: "Fraunces", ui-serif, Georgia, "Times New Roman", serif;
+  --font-mono: "JetBrains Mono", ui-monospace, "SF Mono", Consolas, monospace;
+
+  /* Invariant tokens — text on saturated accent buttons.
+     ink: dark text on gold/red/green gradients (btn-primary, pills, chips)
+     on-color: near-white text on deep gradients (btn-danger/success/denim) */
+  --color-ink: #17100a;
+  --color-on-color: #fbf7ef;
+}
+
+/* ---------- Base ---------- */
+html,
+body {
+  min-height: 100%;
+}
+
+body {
+  background-color: var(--color-dirt-950);
+  color: var(--color-cream-100);
+  background-image:
+    radial-gradient(1100px 500px at 85% -10%, rgba(201, 80, 46, 0.14), transparent 60%),
+    radial-gradient(900px 480px at -10% 15%, rgba(92, 138, 85, 0.10), transparent 55%),
+    radial-gradient(700px 420px at 50% 110%, rgba(224, 177, 82, 0.07), transparent 60%);
+  background-attachment: fixed;
+}
+
+::selection {
+  background: var(--color-hay-400);
+  color: var(--color-dirt-950);
+}
+
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--color-dirt-600) transparent;
+}
+*::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+*::-webkit-scrollbar-thumb {
+  background: var(--color-dirt-600);
+  border-radius: 8px;
+}
+*::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+/* ---------- Shared building blocks ---------- */
+@layer components {
+  .card {
+    @apply rounded-2xl border border-dirt-700/70 bg-gradient-to-b from-dirt-850 to-dirt-900 shadow-[0_1px_0_rgba(251,247,239,0.04)_inset,0_10px_30px_-18px_rgba(0,0,0,0.9)];
+  }
+  .card-pad {
+    @apply p-5;
+  }
+  .section-label {
+    @apply text-[11px] font-semibold uppercase tracking-[0.14em] text-cream-500;
+  }
+  .input {
+    @apply mt-1 block w-full rounded-lg border border-dirt-600 bg-dirt-950/80 px-3 py-2 text-sm text-cream-100 placeholder:text-cream-500 focus:border-hay-400 focus:ring-2 focus:ring-hay-400/20 focus:outline-none;
+  }
+  .btn {
+    @apply inline-flex items-center justify-center gap-1.5 rounded-lg px-3.5 py-2 text-sm font-semibold transition-all duration-150 disabled:pointer-events-none disabled:opacity-45 active:scale-[0.98];
+  }
+  .btn-primary {
+    @apply inline-flex items-center justify-center gap-1.5 rounded-lg px-3.5 py-2 text-sm font-semibold transition-all duration-150 disabled:pointer-events-none disabled:opacity-45 active:scale-[0.98] bg-gradient-to-b from-hay-400 to-hay-500 text-ink shadow-[0_2px_10px_-2px_rgba(224,177,82,0.45)] hover:from-hay-300 hover:to-hay-400;
+  }
+  .btn-ghost {
+    @apply inline-flex items-center justify-center gap-1.5 rounded-lg px-3.5 py-2 text-sm font-semibold transition-all duration-150 disabled:pointer-events-none disabled:opacity-45 active:scale-[0.98] border border-dirt-600 bg-dirt-800/60 text-cream-200 hover:border-cream-400/40 hover:bg-dirt-700 hover:text-cream-50;
+  }
+  .btn-danger {
+    @apply inline-flex items-center justify-center gap-1.5 rounded-lg px-3.5 py-2 text-sm font-semibold transition-all duration-150 disabled:pointer-events-none disabled:opacity-45 active:scale-[0.98] bg-gradient-to-b from-barn-400 to-barn-600 text-on-color shadow-[0_2px_10px_-2px_rgba(201,80,46,0.45)] hover:from-barn-300 hover:to-barn-500;
+  }
+  .btn-success {
+    @apply inline-flex items-center justify-center gap-1.5 rounded-lg px-3.5 py-2 text-sm font-semibold transition-all duration-150 disabled:pointer-events-none disabled:opacity-45 active:scale-[0.98] bg-gradient-to-b from-pasture-400 to-pasture-600 text-on-color shadow-[0_2px_10px_-2px_rgba(92,138,85,0.45)] hover:from-pasture-300 hover:to-pasture-500;
+  }
+  .btn-denim {
+    @apply inline-flex items-center justify-center gap-1.5 rounded-lg px-3.5 py-2 text-sm font-semibold transition-all duration-150 disabled:pointer-events-none disabled:opacity-45 active:scale-[0.98] bg-gradient-to-b from-denim-400 to-denim-600 text-on-color hover:from-denim-300 hover:to-denim-500;
+  }
+  .pill {
+    @apply inline-flex items-center gap-1.5 rounded-full border px-2.5 py-0.5 text-xs font-semibold;
+  }
+  .dot {
+    @apply inline-block h-1.5 w-1.5 rounded-full;
+  }
+  .stat-value {
+    @apply mt-1.5 text-2xl font-semibold tracking-tight tabular-nums sm:text-[1.7rem];
+  }
+}
+
+/* ============================================================
+   LIGHT THEME — warm paper + earth inks, same ranch character
+   Tailwind 4 emits theme vars on :root, so overriding them
+   under :root[data-theme="light"] flips every utility class.
+   ============================================================ */
+:root[data-theme="light"] {
+  color-scheme: light;
+
+  /* Surfaces — warm paper instead of near-black dirt */
+  --color-dirt-950: #f8f4ea;
+  --color-dirt-900: #f1ead9;
+  --color-dirt-850: #f5efdf;
+  --color-dirt-800: #e9dfc8;
+  --color-dirt-700: #d8c9ab;
+  --color-dirt-600: #c2ae8c;
+
+  /* Ink — warm dark browns instead of creams */
+  --color-cream-50: #241a0d;
+  --color-cream-100: #3a2d1b;
+  --color-cream-200: #52422a;
+  --color-cream-300: #6a573a;
+  --color-cream-400: #83704f;
+  --color-cream-500: #9c8865;
+
+  /* Barn red — deepened so text on paper stays legible */
+  --color-barn-200: #c05c36;
+  --color-barn-300: #ad4d29;
+  --color-barn-400: #9a3f1f;
+  --color-barn-500: #86351a;
+  --color-barn-600: #712c15;
+  --color-barn-700: #5c2410;
+
+  /* Hay gold */
+  --color-hay-100: #e8cf96;
+  --color-hay-200: #ddb96c;
+  --color-hay-300: #cfa04a;
+  --color-hay-400: #b9882f;
+  --color-hay-500: #9c7124;
+  --color-hay-600: #7f5b1c;
+
+  /* Pasture green */
+  --color-pasture-200: #7c9f74;
+  --color-pasture-300: #628b5a;
+  --color-pasture-400: #4d7646;
+  --color-pasture-500: #3d6038;
+  --color-pasture-600: #314c2d;
+  --color-pasture-700: #273c24;
+
+  /* Denim blue */
+  --color-denim-200: #7ea5c2;
+  --color-denim-300: #5f8faf;
+  --color-denim-400: #47799d;
+  --color-denim-500: #386487;
+  --color-denim-600: #2e5271;
+  --color-denim-700: #25425b;
+
+  /* Plum */
+  --color-plum-300: #9a74b1;
+  --color-plum-400: #825b9b;
+  --color-plum-500: #6c4984;
+  --color-plum-600: #593c6e;
+
+  /* Page background — soft warm glows on paper */
+  background-image:
+    radial-gradient(1100px 500px at 85% -10%, rgba(201, 80, 46, 0.10), transparent 60%),
+    radial-gradient(900px 480px at -10% 15%, rgba(92, 138, 85, 0.08), transparent 55%),
+    radial-gradient(700px 420px at 50% 110%, rgba(224, 177, 82, 0.12), transparent 60%);
+  background-attachment: fixed;
+}
+
+/* Light-mode refinements that pure variable flips can't express */
+:root[data-theme="light"] body {
+  background-color: var(--color-dirt-950);
+  background-image:
+    radial-gradient(1100px 500px at 85% -10%, rgba(201, 80, 46, 0.08), transparent 60%),
+    radial-gradient(900px 480px at -10% 15%, rgba(92, 138, 85, 0.07), transparent 55%),
+    radial-gradient(700px 420px at 50% 110%, rgba(224, 177, 82, 0.10), transparent 60%);
+}
+
+:root[data-theme="light"] .card {
+  background: linear-gradient(to bottom, var(--color-dirt-850), var(--color-dirt-900));
+  border-color: rgba(216, 201, 171, 0.8);
+  box-shadow:
+    0 1px 0 rgba(255, 255, 255, 0.7) inset,
+    0 10px 30px -18px rgba(90, 70, 40, 0.35);
+}
+
+:root[data-theme="light"] ::selection {
+  background: var(--color-hay-400);
+  color: #fff;
+}
+
+:root[data-theme="light"] * {
+  scrollbar-color: var(--color-dirt-600) transparent;
+}

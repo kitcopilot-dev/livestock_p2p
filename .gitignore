@@ -1,0 +1,25 @@
+node_modules/
+dist/
+.next/
+out/
+*.tsbuildinfo
+.env
+.env.local
+.env.*.local
+coverage/
+.DS_Store
+*.log
+packages/db/src/generated/
+packages/db/.env
+apps/api/.env.local
+
+# Playwright
+test-results/
+playwright-report/
+blob-report/
+.auth/
+
+# Internal tooling
+.freebuff/
+_gen*.py
+_write*.py

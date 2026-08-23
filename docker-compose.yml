@@ -1,0 +1,38 @@
+services:
+  postgres:
+    image: postgres:18-alpine
+    environment:
+      POSTGRES_USER: livestock
+      POSTGRES_PASSWORD: livestock
+      POSTGRES_DB: livestock
+    ports:
+      # host 55432: a native Postgres service owns 5432 on this machine
+      - "55432:5432"
+    volumes:
+      # postgres:18+ expects the mount at /var/lib/postgresql (major-version subdirs)
+      - pgdata:/var/lib/postgresql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U livestock -d livestock"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+  redis:
+    # BullMQ production settings (see docs.bullmq.io/guide/going-to-production):
+    # AOF persistence for durability, noeviction so the queue never loses jobs.
+    image: redis:8-alpine
+    command: ["redis-server", "--appendonly", "yes", "--maxmemory-policy", "noeviction"]
+    ports:
+      # host 6380: 6379 is occupied by another project's redis on this machine
+      - "6380:6379"
+    volumes:
+      - redisdata:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+volumes:
+  pgdata:
+  redisdata:
