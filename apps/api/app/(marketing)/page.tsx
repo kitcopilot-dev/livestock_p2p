@@ -166,26 +166,29 @@ export default async function LandingPage() {
       </section>
 
       {/* CTA */}
-      <section className="rounded-2xl bg-gradient-to-r from-barn-700 to-barn-600 p-8 text-center sm:p-12">
-        <h2 className="font-display text-2xl font-bold text-on-color sm:text-3xl">
-          Ready to transform your livestock operations?
-        </h2>
-        <p className="mt-4 text-on-color/80">
-          Join hundreds of buyers, sellers, and haulers already using LivestockP2P.
-        </p>
-        <div className="mt-8 flex flex-wrap items-center justify-center gap-4">
-          <Link
-            href="/register"
-            className="rounded-xl bg-on-color px-8 py-3.5 font-semibold text-barn-700 shadow-lg transition hover:shadow-xl"
-          >
-            Create Free Account
-          </Link>
-          <Link
-            href="/marketplace"
-            className="rounded-xl border-2 border-on-color/40 px-8 py-3.5 font-semibold text-on-color transition hover:border-on-color/70 hover:bg-on-color/10"
-          >
-            Browse Marketplace
-          </Link>
+      <section className="card relative overflow-hidden p-8 text-center sm:p-12">
+        <div className="absolute inset-0 bg-gradient-to-br from-barn-600/20 via-transparent to-barn-500/15" aria-hidden />
+        <div className="relative">
+          <h2 className="font-display text-2xl font-bold text-cream-50 sm:text-3xl">
+            Ready to transform your livestock operations?
+          </h2>
+          <p className="mt-4 text-cream-400">
+            Join hundreds of buyers, sellers, and haulers already using LivestockP2P.
+          </p>
+          <div className="mt-8 flex flex-wrap items-center justify-center gap-4">
+            <Link
+              href="/register"
+              className="btn-primary rounded-xl px-8 py-3.5 text-base"
+            >
+              Create Free Account
+            </Link>
+            <Link
+              href="/marketplace"
+              className="btn-ghost rounded-xl px-8 py-3.5 text-base"
+            >
+              Browse Marketplace
+            </Link>
+          </div>
         </div>
       </section>
 
