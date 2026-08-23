@@ -29,6 +29,14 @@ const SORT_OPTIONS = [
   { value: "head_desc", label: "Most head" },
 ];
 
+function parseMultiParam(val: string | undefined): string[] {
+  if (!val) return [];
+  return val
+    .split(",")
+    .map((s) => s.trim())
+    .filter(Boolean);
+}
+
 export default async function MarketplacePage({
   searchParams,
 }: {
@@ -46,6 +54,13 @@ export default async function MarketplacePage({
     maxPrice?: string;
     minHead?: string;
     maxHead?: string;
+    ageRange?: string;
+    frame?: string;
+    harvest?: string;
+    husbandry?: string;
+    healthStatus?: string;
+    fertility?: string;
+    condition?: string;
   }>;
 }) {
   const params = await searchParams;
@@ -53,23 +68,29 @@ export default async function MarketplacePage({
   const sort = params.sort ?? "newest";
   const status = params.status ?? "ACTIVE";
   const unit = (params.unit ?? "all") as ListingUnit;
-  const load = params.load ?? "";
+  const load = parseMultiParam(params.load);
   const q = params.q?.trim() ?? "";
-  const gender = (params.gender ?? "") as Gender | "";
-  const tier = (params.tier ?? "") as ListingTier | "";
+  const gender = parseMultiParam(params.gender);
+  const tier = parseMultiParam(params.tier);
   const location = params.location?.trim() ?? "";
   const minPrice = params.minPrice ? parseInt(params.minPrice) : null;
   const maxPrice = params.maxPrice ? parseInt(params.maxPrice) : null;
   const minHead = params.minHead ? parseInt(params.minHead) : null;
   const maxHead = params.maxHead ? parseInt(params.maxHead) : null;
+  const ageRange = parseMultiParam(params.ageRange);
+  const frame = parseMultiParam(params.frame);
+  const harvest = parseMultiParam(params.harvest);
+  const husbandry = parseMultiParam(params.husbandry);
+  const healthStatus = parseMultiParam(params.healthStatus);
+  const fertility = parseMultiParam(params.fertility);
+  const condition = parseMultiParam(params.condition);
 
   // Build where clause
   const where: Record<string, unknown> = { marketplace: "LIVE" };
+  const andConditions: Record<string, unknown>[] = [];
+
   if (species) where.species = species;
   if (status) where.status = status;
-  if (load) where.loadType = load;
-  if (gender) where.gender = gender;
-  if (tier) where.tier = tier;
   if (location) {
     where.location = { contains: location, mode: "insensitive" };
   }
@@ -81,22 +102,35 @@ export default async function MarketplacePage({
     ];
   }
 
+  // Multi-select filters (comma-separated → OR within group, AND across groups)
+  if (gender.length > 0) andConditions.push({ gender: { in: gender } });
+  if (tier.length > 0) andConditions.push({ tier: { in: tier } });
+  if (load.length > 0) andConditions.push({ loadType: { in: load } });
+  if (ageRange.length > 0) andConditions.push({ ageRange: { in: ageRange } });
+  if (frame.length > 0) andConditions.push({ frame: { in: frame } });
+  if (harvest.length > 0) andConditions.push({ harvest: { in: harvest } });
+  if (husbandry.length > 0) andConditions.push({ husbandry: { in: husbandry } });
+  if (healthStatus.length > 0) andConditions.push({ healthStatus: { in: healthStatus } });
+  if (fertility.length > 0) andConditions.push({ fertility: { in: fertility } });
+  if (condition.length > 0) andConditions.push({ condition: { in: condition } });
+
   // Price range filter
   if (minPrice !== null || maxPrice !== null) {
-    const priceConditions: Record<string, unknown>[] = [];
-    if (minPrice !== null) priceConditions.push({ pricePerLbCents: { gte: minPrice } });
-    if (maxPrice !== null) priceConditions.push({ pricePerLbCents: { lte: maxPrice } });
-    if (priceConditions.length === 1) Object.assign(where, priceConditions[0]);
-    else if (priceConditions.length > 1) where.AND = priceConditions;
+    if (minPrice !== null) andConditions.push({ pricePerLbCents: { gte: minPrice } });
+    if (maxPrice !== null) andConditions.push({ pricePerLbCents: { lte: maxPrice } });
   }
 
   // Head count range filter
   if (minHead !== null || maxHead !== null) {
-    const headConditions: Record<string, unknown>[] = [];
-    if (minHead !== null) headConditions.push({ headCount: { gte: minHead } });
-    if (maxHead !== null) headConditions.push({ headCount: { lte: maxHead } });
-    if (headConditions.length === 1) Object.assign(where, headConditions[0]);
-    else if (headConditions.length > 1) where.AND = headConditions;
+    if (minHead !== null) andConditions.push({ headCount: { gte: minHead } });
+    if (maxHead !== null) andConditions.push({ headCount: { lte: maxHead } });
+  }
+
+  // Merge AND conditions
+  if (andConditions.length === 1) {
+    Object.assign(where, andConditions[0]);
+  } else if (andConditions.length > 1) {
+    where.AND = andConditions;
   }
 
   const baseOrderBy: Record<string, string> =
@@ -146,15 +180,22 @@ export default async function MarketplacePage({
     if (species) base.species = species;
     if (sort !== "newest") base.sort = sort;
     if (unit !== "all") base.unit = unit;
-    if (load) base.load = load;
+    if (load.length > 0) base.load = load.join(",");
     if (q) base.q = q;
-    if (gender) base.gender = gender;
-    if (tier) base.tier = tier;
+    if (gender.length > 0) base.gender = gender.join(",");
+    if (tier.length > 0) base.tier = tier.join(",");
     if (location) base.location = location;
     if (minPrice !== null) base.minPrice = String(minPrice);
     if (maxPrice !== null) base.maxPrice = String(maxPrice);
     if (minHead !== null) base.minHead = String(minHead);
     if (maxHead !== null) base.maxHead = String(maxHead);
+    if (ageRange.length > 0) base.ageRange = ageRange.join(",");
+    if (frame.length > 0) base.frame = frame.join(",");
+    if (harvest.length > 0) base.harvest = harvest.join(",");
+    if (husbandry.length > 0) base.husbandry = husbandry.join(",");
+    if (healthStatus.length > 0) base.healthStatus = healthStatus.join(",");
+    if (fertility.length > 0) base.fertility = fertility.join(",");
+    if (condition.length > 0) base.condition = condition.join(",");
     const merged = { ...base, ...overrides };
     for (const [k, v] of Object.entries(merged)) {
       if (v) sp.set(k, v);
@@ -165,13 +206,21 @@ export default async function MarketplacePage({
   // Count active filters
   const activeFilterCount = [
     species,
-    gender,
-    tier,
+    gender.length > 0,
+    tier.length > 0,
     location,
     minPrice !== null,
     maxPrice !== null,
     minHead !== null,
     maxHead !== null,
+    ageRange.length > 0,
+    frame.length > 0,
+    harvest.length > 0,
+    husbandry.length > 0,
+    healthStatus.length > 0,
+    fertility.length > 0,
+    condition.length > 0,
+    load.length > 0,
     q,
   ].filter(Boolean).length;
 
@@ -213,10 +262,17 @@ export default async function MarketplacePage({
         <form action="/marketplace" method="get" className="flex items-center gap-2">
           <input type="hidden" name="status" value="ACTIVE" />
           {species && <input type="hidden" name="species" value={species} />}
-          {gender && <input type="hidden" name="gender" value={gender} />}
-          {tier && <input type="hidden" name="tier" value={tier} />}
-          {load && <input type="hidden" name="load" value={load} />}
+          {gender.length > 0 && <input type="hidden" name="gender" value={gender.join(",")} />}
+          {tier.length > 0 && <input type="hidden" name="tier" value={tier.join(",")} />}
+          {load.length > 0 && <input type="hidden" name="load" value={load.join(",")} />}
           {location && <input type="hidden" name="location" value={location} />}
+          {ageRange.length > 0 && <input type="hidden" name="ageRange" value={ageRange.join(",")} />}
+          {frame.length > 0 && <input type="hidden" name="frame" value={frame.join(",")} />}
+          {harvest.length > 0 && <input type="hidden" name="harvest" value={harvest.join(",")} />}
+          {husbandry.length > 0 && <input type="hidden" name="husbandry" value={husbandry.join(",")} />}
+          {healthStatus.length > 0 && <input type="hidden" name="healthStatus" value={healthStatus.join(",")} />}
+          {fertility.length > 0 && <input type="hidden" name="fertility" value={fertility.join(",")} />}
+          {condition.length > 0 && <input type="hidden" name="condition" value={condition.join(",")} />}
           <input type="search" name="q" defaultValue={q} placeholder="Search breed, location, description…" className="input !w-72" />
           <button type="submit" className="btn-ghost px-3 py-1.5 text-sm">Search</button>
         </form>
@@ -269,6 +325,13 @@ export default async function MarketplacePage({
         maxHead={maxHead}
         locationOptions={locationOptions}
         activeFilterCount={activeFilterCount}
+        ageRange={ageRange}
+        frame={frame}
+        harvest={harvest}
+        husbandry={husbandry}
+        healthStatus={healthStatus}
+        fertility={fertility}
+        condition={condition}
       />
 
       {/* Results count */}
