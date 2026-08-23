@@ -393,14 +393,14 @@ export default async function ListingDetailPage({ params }: { params: Promise<{ 
               </div>
             </div>
             {canBuy && (
-              <div className="space-y-2">
+              <div className="mt-3 flex flex-col gap-2">
                 <Link href={`/offers/new?l=${listing.id}`} className="btn-ghost w-full justify-center py-3 text-base">
                   ✏️ Make an offer
                 </Link>
-                <form action={async () => { "use server"; await createEscrowFromListingAction(listing.id); }} className="mt-2">
+                <form action={async () => { "use server"; await createEscrowFromListingAction(listing.id); }}>
                   <button type="submit" className="btn-primary w-full py-3 text-base">Buy now &mdash; escrow protected</button>
                 </form>
-                <p className="mt-2 text-center text-[10px] text-cream-500">Buy now creates and funds an escrow instantly. Make an offer lets you negotiate price.</p>
+                <p className="text-center text-[10px] text-cream-500">Buy now creates and funds an escrow instantly. Make an offer lets you negotiate price.</p>
               </div>
             )}
             {isOwner && (
