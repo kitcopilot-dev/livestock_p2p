@@ -5,6 +5,7 @@ import type { MilestoneKind } from "@livestock/db";
 import { Actions } from "../../../components/Actions";
 import { Countdown } from "../../../components/Countdown";
 import { EvidenceUpload } from "../../../components/EvidenceUpload";
+import { PendingPaymentBanner } from "../../../components/PendingPaymentBanner";
 import { StatusBadge } from "../../../components/StatusBadge";
 import { getDemoRole } from "../../../lib/demoAuth";
 import { formatDate, formatLbs, money } from "../../../lib/format";
@@ -105,6 +106,10 @@ export default async function EscrowDetailPage({ params }: { params: Promise<{ i
         <h1 className="font-mono text-xl font-semibold tracking-tight text-cream-50">{escrow.reference}</h1>
         <StatusBadge status={escrow.status} />
       </div>
+
+      {escrow.status === "PENDING_PAYMENT" && (
+        <PendingPaymentBanner escrowId={escrow.id} amountCents={escrow.saleAmountCents} />
+      )}
 
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
         {/* Left column: money + action */}

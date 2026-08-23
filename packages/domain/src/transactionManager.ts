@@ -177,6 +177,37 @@ export class TransactionManager {
     );
   }
 
+  /**
+   * Moves an escrow from DRAFT to PENDING_PAYMENT (financing option).
+   * The buyer can pay later from the escrow detail page.
+   */
+  async markPendingPayment(escrowId: string, ctx: { actor: EscrowActor; userId?: string }): Promise<EscrowTransaction> {
+    const now = this.now();
+    return runEscrowTransaction(
+      async (tx) => {
+        const escrow = await lockEscrow(tx, escrowId);
+        assertTransition(escrow.status, "PENDING_PAYMENT", { escrow, actor: ctx.actor, now });
+        const updated = await tx.escrowTransaction.update({
+          where: { id: escrowId },
+          data: { status: "PENDING_PAYMENT", version: { increment: 1 } },
+        });
+        await tx.milestone.create({
+          data: { escrowId, kind: "CREATED", occurredAt: now, actorUserId: ctx.userId },
+        });
+        await auditLogger.write(tx, {
+          actorUserId: ctx.userId,
+          actorRole: ctx.actor,
+          action: "ESCROW_PENDING_PAYMENT",
+          entityType: "EscrowTransaction",
+          entityId: escrowId,
+          before: { status: escrow.status },
+          after: { status: "PENDING_PAYMENT" },
+        });
+        return updated;
+      },
+    );
+  }
+
   async cancel(escrowId: string, ctx: { actor: EscrowActor; userId?: string }): Promise<EscrowTransaction> {
     const now = this.now();
     return runEscrowTransaction(

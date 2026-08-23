@@ -73,6 +73,7 @@ enum LedgerEntryStatus {
 
 enum EscrowStatus {
   DRAFT
+  PENDING_PAYMENT
   FUNDED
   IN_TRANSIT
   DELIVERED

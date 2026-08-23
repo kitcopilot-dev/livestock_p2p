@@ -65,6 +65,7 @@ export function msToHours(ms: number): string {
 
 const STATUS_STYLES: Record<EscrowStatus, { label: string; dot: string; classes: string }> = {
   DRAFT: { label: "Draft", dot: "bg-cream-500", classes: "border-dirt-600 bg-dirt-800/70 text-cream-300" },
+  PENDING_PAYMENT: { label: "Awaiting payment", dot: "bg-hay-400", classes: "border-hay-500/50 bg-hay-500/15 text-hay-200" },
   FUNDED: { label: "Funded", dot: "bg-denim-400", classes: "border-denim-600/50 bg-denim-500/15 text-denim-200" },
   IN_TRANSIT: { label: "In transit", dot: "bg-denim-300", classes: "border-denim-600/50 bg-denim-500/15 text-denim-200" },
   DELIVERED: { label: "Delivered", dot: "bg-pasture-300", classes: "border-pasture-600/50 bg-pasture-500/15 text-pasture-200" },

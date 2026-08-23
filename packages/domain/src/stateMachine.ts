@@ -5,8 +5,10 @@ import { IllegalTransitionError } from "./errors";
  * Formal state machine for the escrow lifecycle.
  *
  *   DRAFT -> FUNDED -> IN_TRANSIT -> DELIVERED -> INSPECTION_PERIOD
- *                                                    |-> DISPUTED -> ARBITRATION_PROCESSING
- *                                                    |-> RESOLVED_DISBURSED (auto-release)
+ *    |                        |-> DISPUTED -> ARBITRATION_PROCESSING
+ *    |                        |-> RESOLVED_DISBURSED (auto-release)
+ *    |-> PENDING_PAYMENT -> FUNDED (buyer pays later) -> IN_TRANSIT
+ *    |-> PENDING_PAYMENT -> CANCELLED
  *   INSPECTION_PERIOD / ARBITRATION_PROCESSING -> RESOLVED_DISBURSED | REFUNDED
  *
  * Transitions are declared with their guards; `assertTransition` is the only
@@ -103,6 +105,11 @@ export const ESCROW_TRANSITIONS: Record<
 > = {
   DRAFT: {
     FUNDED: [actorIs("BUYER", "PLATFORM", "SYSTEM_ARBITER")],
+    PENDING_PAYMENT: [actorIs("BUYER", "PLATFORM")],
+    CANCELLED: [actorIs("BUYER", "PLATFORM")],
+  },
+  PENDING_PAYMENT: {
+    FUNDED: [actorIs("BUYER", "PLATFORM")],
     CANCELLED: [actorIs("BUYER", "PLATFORM")],
   },
   FUNDED: {

@@ -193,6 +193,46 @@ export async function addEvidenceAction(formData: FormData): Promise<ActionResul
   }
 }
 
+/**
+ * Create an escrow with deferred payment (financing option).
+ * The escrow goes to PENDING_PAYMENT instead of DRAFT, allowing the
+ * buyer to pay later from the escrow detail page.
+ */
+export async function createFinancedEscrowAction(
+  escrowId: string,
+): Promise<ActionResult> {
+  try {
+    const user = await getDemoUser();
+    const tm = new TransactionManager();
+    await tm.markPendingPayment(escrowId, { actor: "BUYER", userId: user.id });
+    revalidatePath("/escrows");
+    revalidatePath(`/escrows/${escrowId}`);
+    return { ok: true, escrowId };
+  } catch (err) {
+    return errorResult(err);
+  }
+}
+
+/**
+ * Fund an escrow that was created with deferred payment.
+ * Moves from PENDING_PAYMENT -> FUNDED.
+ */
+export async function fundEscrowLaterAction(
+  escrowId: string,
+): Promise<ActionResult> {
+  try {
+    const user = await getDemoUser();
+    const tm = new TransactionManager();
+    const actor = actorForDemoRole(user.role);
+    await tm.fund(escrowId, { actor, userId: user.id });
+    revalidatePath("/escrows");
+    revalidatePath(`/escrows/${escrowId}`);
+    return { ok: true, escrowId };
+  } catch (err) {
+    return errorResult(err);
+  }
+}
+
 /** Escalate an open dispute to formal arbitration (platform role). */
 export async function escalateDisputeAction(disputeId: string): Promise<ActionResult> {
   try {
