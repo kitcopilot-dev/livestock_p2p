@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { cookies } from "next/headers";
 import { prisma } from "@livestock/db";
 import { auditLogger } from "@livestock/compliance";
@@ -20,9 +21,11 @@ const SETTING_LABELS: Record<string, string> = {
   inspectionWindowMs: "Inspection window",
   disputeProofWindowMs: "Dispute proof window",
   financingWindowDays: "Financing window (days)",
+  financingGraceDays: "Financing grace (days)",
   financingFeeBps: "Financing fee (bps)",
   financingMaxEscrowCents: "Financing cap per escrow",
   financingMaxOutstandingCents: "Financing outstanding cap",
+  financingMaxLapses: "Financing lapse limit",
 };
 
 /** Extract the stored `value` from an audit before/after JSON blob. */
@@ -184,39 +187,28 @@ export default async function SettingsPage() {
               </Field>
             </div>
 
-            <div className="border-t border-dirt-700/60 pt-5">
-              <h3 className="font-display text-sm font-semibold text-plum-300">Financing (deferred payment)</h3>
-              <p className="mt-0.5 text-xs text-cream-500">
-                Buyers who pick “Pay later” get a committed escrow with this window to fund it before it auto-cancels.
-              </p>
-              <div className="mt-4 grid grid-cols-1 gap-5 sm:grid-cols-2">
-                <Field label="Payment window (days)">
-                  <input name="financingWindowDays" type="number" min="1" max="90" step="1"
-                    defaultValue={settings.financingWindowDays} disabled={!isPlatform} className="input" />
-                  <span className="mt-1 block text-[11px] text-cream-500">days to fund before auto-cancel</span>
-                </Field>
-                <Field label="Financing fee (bps)">
-                  <input name="financingFeeBps" type="number" min="0" max="1000" step="1"
-                    defaultValue={settings.financingFeeBps} disabled={!isPlatform} className="input" />
-                  <span className="mt-1 block text-[11px] text-cream-500">{bpsToPct(settings.financingFeeBps)} of sale, owed at funding</span>
-                </Field>
-                <Field label="Cap per escrow ($)">
-                  <input name="financingMaxEscrowDollars" type="number" min="100" max="10000000" step="any"
-                    defaultValue={settings.financingMaxEscrowCents / 100} disabled={!isPlatform} className="input" />
-                  <span className="mt-1 block text-[11px] text-cream-500">max sale amount that can be financed</span>
-                </Field>
-                <Field label="Outstanding cap per buyer ($)">
-                  <input name="financingMaxOutstandingDollars" type="number" min="100" max="50000000" step="any"
-                    defaultValue={settings.financingMaxOutstandingCents / 100} disabled={!isPlatform} className="input" />
-                  <span className="mt-1 block text-[11px] text-cream-500">max concurrent financed amount per buyer</span>
-                </Field>
-              </div>
-            </div>
-
             {isPlatform && (
               <button type="submit" className="btn-primary">Save settings</button>
             )}
           </form>
+        </section>
+
+        <section className="card card-pad">
+          <div className="flex items-center justify-between">
+            <h2 className="font-display text-lg font-semibold text-cream-50">Financing terms</h2>
+            <Link href="/settings/financing" className="text-sm font-medium text-plum-300 hover:text-plum-200">
+              Manage →
+            </Link>
+          </div>
+          <p className="mt-1 text-sm text-cream-400">Deferred-payment (“Pay later”) economics.</p>
+          <dl className="mt-4 space-y-3 text-sm">
+            <FinRow label="Payment window" value={`${settings.financingWindowDays} days`} />
+            <FinRow label="Grace period" value={settings.financingGraceDays > 0 ? `${settings.financingGraceDays} days` : "None"} />
+            <FinRow label="Financing fee" value={bpsToPct(settings.financingFeeBps)} />
+            <FinRow label="Max per escrow" value={`$${(settings.financingMaxEscrowCents / 100).toLocaleString("en-US")}`} />
+            <FinRow label="Max outstanding" value={`$${(settings.financingMaxOutstandingCents / 100).toLocaleString("en-US")}`} />
+            <FinRow label="Lapse limit" value={String(settings.financingMaxLapses)} />
+          </dl>
         </section>
 
         <section className="card card-pad">
@@ -406,6 +398,15 @@ function StatusCard({
       <p className="section-label">{label}</p>
       <p className={`stat-value ${accents[tone]}`}>{value}</p>
       <p className="mt-1 text-[11px] text-cream-500">{hint}</p>
+    </div>
+  );
+}
+
+function FinRow({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="flex items-baseline justify-between gap-3 border-b border-dirt-700/50 pb-2.5 last:border-0 last:pb-0">
+      <dt className="font-medium text-cream-100">{label}</dt>
+      <dd className="text-sm font-semibold tabular-nums text-plum-200">{value}</dd>
     </div>
   );
 }

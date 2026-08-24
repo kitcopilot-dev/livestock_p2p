@@ -12,11 +12,11 @@ import { getPlatformSettings } from "./platformSettings";
  * the point of financing:
  *   - per-escrow cap on sale amount
  *   - per-buyer cap on concurrent outstanding financed amount
- *   - lapse guard: 2+ missed payment deadlines in 90 days disables financing
+ *   - lapse guard: N missed payment deadlines in 90 days disables financing
+ *     (N configured via platform settings)
  */
 
 const LAPSE_WINDOW_MS = 90 * 24 * 3_600_000;
-const MAX_LAPSES = 2;
 
 export interface FinancingResult {
   ok: boolean;
@@ -60,8 +60,8 @@ export async function assertFinancingEligible(input: {
       occurredAt: { gte: new Date(now.getTime() - LAPSE_WINDOW_MS) },
     },
   });
-  if (lapsed >= MAX_LAPSES) {
-    return "Financing is disabled for this account after missed payment deadlines — contact support";
+  if (lapsed >= platform.financingMaxLapses) {
+    return `Financing is disabled for this account after ${platform.financingMaxLapses} missed payment deadlines — contact support`;
   }
 
   return null;
@@ -90,7 +90,10 @@ export async function financeEscrow(
   if (eligibilityError) return { ok: false, error: eligibilityError };
 
   const platform = await getPlatformSettings();
-  const paymentDeadlineAt = new Date(Date.now() + platform.financingWindowDays * 24 * 3_600_000);
+  // The hard deadline is the payment window plus any configured grace period;
+  // the deadline job (and sweep backstop) auto-cancel at this instant.
+  const deadlineDays = platform.financingWindowDays + platform.financingGraceDays;
+  const paymentDeadlineAt = new Date(Date.now() + deadlineDays * 24 * 3_600_000);
 
   try {
     const tm = new TransactionManager();

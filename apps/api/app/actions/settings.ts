@@ -68,12 +68,14 @@ async function updatePlatformSettingsActionInner(formData: FormData): Promise<Se
   // Windows are entered in hours (e.g. 24 / 48) and stored as ms.
   const inspectionWindowHours = floatFrom(formData, "inspectionWindowHours");
   const disputeProofWindowHours = floatFrom(formData, "disputeProofWindowHours");
-  // Financing terms: days to fund, fee in bps, caps entered in dollars and
-  // stored in cents (matching every other money field in the DB).
+  // Financing terms: days to fund, grace, fee in bps, caps entered in dollars
+  // and stored in cents (matching every other money field in the DB).
   const financingWindowDays = intFrom(formData, "financingWindowDays");
+  const financingGraceDays = intFrom(formData, "financingGraceDays");
   const financingFeeBps = intFrom(formData, "financingFeeBps");
   const financingMaxEscrowDollars = floatFrom(formData, "financingMaxEscrowDollars");
   const financingMaxOutstandingDollars = floatFrom(formData, "financingMaxOutstandingDollars");
+  const financingMaxLapses = intFrom(formData, "financingMaxLapses");
 
   if (platformFeeBps === null || platformFeeBps < 0 || platformFeeBps > 10_000) {
     return { ok: false, error: "Platform fee must be 0–10,000 basis points" };
@@ -94,25 +96,38 @@ async function updatePlatformSettingsActionInner(formData: FormData): Promise<Se
   if (disputeProofWindowHours === null || disputeProofWindowHours < 0.017 || disputeProofWindowHours > 720) {
     return { ok: false, error: "Dispute proof window must be 0.02–720 hours" };
   }
-  if (financingWindowDays === null || financingWindowDays < 1 || financingWindowDays > 90) {
-    return { ok: false, error: "Financing window must be 1–90 days" };
+
+  // Financing fields are optional: the main /settings form doesn't post them
+  // (they live on /settings/financing), so only validate + persist the ones
+  // actually present in the request.
+  const financingUpdates: Array<{ key: string; value: string }> = [];
+  if (financingWindowDays !== null) {
+    if (financingWindowDays < 1 || financingWindowDays > 90) return { ok: false, error: "Financing window must be 1–90 days" };
+    financingUpdates.push({ key: "financingWindowDays", value: String(financingWindowDays) });
   }
-  if (financingFeeBps === null || financingFeeBps < 0 || financingFeeBps > 1000) {
-    return { ok: false, error: "Financing fee must be 0–1,000 basis points" };
+  if (financingGraceDays !== null) {
+    if (financingGraceDays < 0 || financingGraceDays > 30) return { ok: false, error: "Financing grace period must be 0–30 days" };
+    financingUpdates.push({ key: "financingGraceDays", value: String(financingGraceDays) });
   }
-  if (
-    financingMaxEscrowDollars === null ||
-    financingMaxEscrowDollars < 100 ||
-    financingMaxEscrowDollars > 10_000_000
-  ) {
-    return { ok: false, error: "Financing cap per escrow must be $100–$10M" };
+  if (financingFeeBps !== null) {
+    if (financingFeeBps < 0 || financingFeeBps > 1000) return { ok: false, error: "Financing fee must be 0–1,000 basis points" };
+    financingUpdates.push({ key: "financingFeeBps", value: String(financingFeeBps) });
   }
-  if (
-    financingMaxOutstandingDollars === null ||
-    financingMaxOutstandingDollars < 100 ||
-    financingMaxOutstandingDollars > 50_000_000
-  ) {
-    return { ok: false, error: "Financing outstanding cap must be $100–$50M" };
+  if (financingMaxLapses !== null) {
+    if (financingMaxLapses < 1 || financingMaxLapses > 10) return { ok: false, error: "Financing lapse limit must be 1–10" };
+    financingUpdates.push({ key: "financingMaxLapses", value: String(financingMaxLapses) });
+  }
+  if (financingMaxEscrowDollars !== null) {
+    if (financingMaxEscrowDollars < 100 || financingMaxEscrowDollars > 10_000_000) {
+      return { ok: false, error: "Financing cap per escrow must be $100–$10M" };
+    }
+    financingUpdates.push({ key: "financingMaxEscrowCents", value: String(Math.round(financingMaxEscrowDollars * 100)) });
+  }
+  if (financingMaxOutstandingDollars !== null) {
+    if (financingMaxOutstandingDollars < 100 || financingMaxOutstandingDollars > 50_000_000) {
+      return { ok: false, error: "Financing outstanding cap must be $100–$50M" };
+    }
+    financingUpdates.push({ key: "financingMaxOutstandingCents", value: String(Math.round(financingMaxOutstandingDollars * 100)) });
   }
 
   const updates: Array<{ key: string; value: string }> = [
@@ -122,10 +137,7 @@ async function updatePlatformSettingsActionInner(formData: FormData): Promise<Se
     { key: "paymentRail", value: paymentRail },
     { key: "inspectionWindowMs", value: String(Math.round(inspectionWindowHours * 3_600_000)) },
     { key: "disputeProofWindowMs", value: String(Math.round(disputeProofWindowHours * 3_600_000)) },
-    { key: "financingWindowDays", value: String(financingWindowDays) },
-    { key: "financingFeeBps", value: String(financingFeeBps) },
-    { key: "financingMaxEscrowCents", value: String(Math.round(financingMaxEscrowDollars * 100)) },
-    { key: "financingMaxOutstandingCents", value: String(Math.round(financingMaxOutstandingDollars * 100)) },
+    ...financingUpdates,
   ];
 
   try {
