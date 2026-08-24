@@ -18,9 +18,11 @@ interface OfferActionsProps {
     destinationFacility: string | null;
   };
   role: string;
+  financingWindowDays: number;
+  financingFeePct: number;
 }
 
-export function OfferActions({ offer, role }: OfferActionsProps) {
+export function OfferActions({ offer, role, financingWindowDays, financingFeePct }: OfferActionsProps) {
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
@@ -91,7 +93,7 @@ export function OfferActions({ offer, role }: OfferActionsProps) {
             onChange={(e) => setFinanced(e.target.checked)}
             className="h-4 w-4 rounded border-dirt-600 bg-dirt-900 accent-barn-500"
           />
-          Pay later — deferred payment with a 1% financing fee
+          Pay later — {financingWindowDays}-day financing ({financingFeePct.toFixed(1)}% fee)
         </label>
         <p className="text-xs text-cream-500">This locks in the deal — escrow will be created and funds must be deposited{financed ? " within the payment window" : ""}.</p>
         {error && <p className="text-xs text-barn-300">{error}</p>}

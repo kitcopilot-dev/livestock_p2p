@@ -79,8 +79,16 @@ export default async function NewEscrowPage() {
           <input name="platformFeeBps" type="number" min="0" max="10000" defaultValue={platform.platformFeeBps} className="input" />
         </Field>
 
+        <label className="flex cursor-pointer items-center gap-2 text-sm text-cream-400">
+          <input type="checkbox" name="financed" className="h-4 w-4 rounded border-dirt-600 bg-dirt-900 accent-barn-500" />
+          Pay later — {platform.financingWindowDays}-day financing ({((platform.financingFeeBps) / 100).toFixed(1)}% fee)
+        </label>
+        <p className="-mt-3 text-xs text-cream-500">
+          Defers funding to the payment deadline; the escrow auto-cancels if it isn’t funded in time.
+        </p>
+
         <button type="submit" className="btn-primary w-full py-2.5 text-base">
-          Create draft escrow
+          Create escrow
         </button>
       </form>
     </div>

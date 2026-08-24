@@ -1,6 +1,7 @@
 import { prisma } from "@livestock/db";
 import { getDemoUser, getDemoRoles } from "../../lib/demoAuth";
 import { compactMoney, formatDate } from "../../lib/format";
+import { getPlatformSettings } from "../../lib/platformSettings";
 import { OfferActions } from "../../components/OfferActions";
 import Link from "next/link";
 
@@ -16,7 +17,7 @@ const STATUS_CHIP: Record<string, { dot: string; classes: string; label: string 
 };
 
 export default async function OffersPage() {
-  const [user, roles] = await Promise.all([getDemoUser(), getDemoRoles()]);
+  const [user, roles, platform] = await Promise.all([getDemoUser(), getDemoRoles(), getPlatformSettings()]);
   const isBuyer = roles.includes("BUYER");
   const isSeller = roles.includes("SELLER");
 
@@ -74,7 +75,7 @@ export default async function OffersPage() {
               </div>
             ) : (
               <div className="space-y-3">
-                {sent.map((offer) => <OfferCard key={offer.id} offer={offer} counterparty={offer.seller} role="BUYER" showActions />)}
+                {sent.map((offer) => <OfferCard key={offer.id} offer={offer} counterparty={offer.seller} role="BUYER" showActions platform={platform} />)}
               </div>
             )}
           </section>
@@ -93,7 +94,7 @@ export default async function OffersPage() {
               </div>
             ) : (
               <div className="space-y-3">
-                {received.map((offer) => <OfferCard key={offer.id} offer={offer} counterparty={offer.buyer} role="SELLER" showActions />)}
+                {received.map((offer) => <OfferCard key={offer.id} offer={offer} counterparty={offer.buyer} role="SELLER" showActions platform={platform} />)}
               </div>
             )}
           </section>
@@ -109,7 +110,7 @@ export default async function OffersPage() {
   );
 }
 
-function OfferCard({ offer, counterparty, role, showActions }: { offer: any; counterparty: { id: string; name: string | null }; role: string; showActions: boolean }) {
+function OfferCard({ offer, counterparty, role, showActions, platform }: { offer: any; counterparty: { id: string; name: string | null }; role: string; showActions: boolean; platform: { financingWindowDays: number; financingFeeBps: number } }) {
   const chip = STATUS_CHIP[offer.status] ?? STATUS_CHIP.PENDING;
   const breeds = offer.items.map((i: any) => i.listing.breed).join(", ");
   return (
@@ -153,7 +154,7 @@ function OfferCard({ offer, counterparty, role, showActions }: { offer: any; cou
         {offer.sellerApprovedAt && " · Seller approved " + formatDate(offer.sellerApprovedAt)}
         {offer.buyerConfirmedAt && " · Buyer confirmed " + formatDate(offer.buyerConfirmedAt)}
       </div>
-      {showActions && <div className="mt-4"><OfferActions offer={offer} role={role} /></div>}
+      {showActions && <div className="mt-4"><OfferActions offer={offer} role={role} financingWindowDays={platform.financingWindowDays} financingFeePct={platform.financingFeeBps / 100} /></div>}
     </div>
   );
 }

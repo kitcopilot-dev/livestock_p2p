@@ -63,7 +63,18 @@ export async function createEscrowAction(formData: FormData): Promise<ActionResu
     }
     const tm = new TransactionManager();
     const escrow = await tm.createDraft(parsed.data);
-    void acting;
+
+    // "Pay later" converts the draft into a financed (deferred-payment)
+    // escrow: eligibility caps + lapse guard are enforced by financeEscrow;
+    // on failure the draft remains so the buyer can retry or fund normally.
+    if (formData.get("financed") === "on") {
+      const res = await financeEscrow(escrow.id, acting.id);
+      if (!res.ok) {
+        revalidatePath("/escrows");
+        return { ok: false, error: res.error };
+      }
+    }
+
     revalidatePath("/escrows");
     redirect(`/escrows/${escrow.id}`);
   } catch (err) {
