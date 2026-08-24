@@ -582,6 +582,7 @@ model Listing {
   seller User @relation("ListingsBySeller", fields: [sellerId], references: [id], onDelete: Restrict)
   offers OfferItem[]
   documents ListingDocument[]
+  loads Load[]
 
   @@index([status, species])
   @@index([status, location])
@@ -609,6 +610,9 @@ model ListingDocument {
 model Load {
   id             String     @id @default(cuid())
   escrowId       String?    @unique
+  // The listing this load fulfills (buy-now path). Used to release the
+  // listing back to ACTIVE when its escrow lapses or is cancelled.
+  listingId      String?
   origin         String
   destination    String
   distanceMiles  Int?
@@ -629,12 +633,14 @@ model Load {
   updatedAt      DateTime   @updatedAt
 
   escrow EscrowTransaction? @relation(fields: [escrowId], references: [id], onDelete: Restrict)
+  listing Listing?          @relation(fields: [listingId], references: [id], onDelete: SetNull)
   hauler User?             @relation("LoadsByHauler", fields: [haulerId], references: [id], onDelete: SetNull)
   poster User?             @relation("LoadsPostedBy", fields: [posterId], references: [id], onDelete: SetNull)
   bids   LoadBid[]
 
   @@index([status])
   @@index([haulerId])
+  @@index([listingId])
 }
 
 model LoadBid {

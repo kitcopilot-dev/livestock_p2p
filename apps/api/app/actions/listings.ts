@@ -183,6 +183,7 @@ export async function createEscrowFromListingAction(
     await prisma.load.create({
       data: {
         escrowId: escrow.id,
+        listingId: listing.id,
         origin: listing.location,
         destination: loadDestination,
         distanceMiles: loadMiles,
