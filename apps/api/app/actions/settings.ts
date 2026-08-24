@@ -77,24 +77,33 @@ async function updatePlatformSettingsActionInner(formData: FormData): Promise<Se
   const financingMaxOutstandingDollars = floatFrom(formData, "financingMaxOutstandingDollars");
   const financingMaxLapses = intFrom(formData, "financingMaxLapses");
 
-  if (platformFeeBps === null || platformFeeBps < 0 || platformFeeBps > 10_000) {
-    return { ok: false, error: "Platform fee must be 0–10,000 basis points" };
+  // Core fields are optional (the /settings/financing page only posts the
+  // financing subset); each is validated and persisted only when present.
+  const coreUpdates: Array<{ key: string; value: string }> = [];
+  if (platformFeeBps !== null) {
+    if (platformFeeBps < 0 || platformFeeBps > 10_000) return { ok: false, error: "Platform fee must be 0–10,000 basis points" };
+    coreUpdates.push({ key: "platformFeeBps", value: String(platformFeeBps) });
   }
-  if (weightTolerancePct === null || weightTolerancePct < 0 || weightTolerancePct > 50) {
-    return { ok: false, error: "Weight tolerance must be 0–50%" };
+  if (weightTolerancePct !== null) {
+    if (weightTolerancePct < 0 || weightTolerancePct > 50) return { ok: false, error: "Weight tolerance must be 0–50%" };
+    coreUpdates.push({ key: "weightTolerancePct", value: String(weightTolerancePct) });
   }
-  if (freightFeePct === null || freightFeePct < 0 || freightFeePct > 100) {
-    return { ok: false, error: "Freight estimate must be 0–100%" };
+  if (freightFeePct !== null) {
+    if (freightFeePct < 0 || freightFeePct > 100) return { ok: false, error: "Freight estimate must be 0–100%" };
+    coreUpdates.push({ key: "freightFeePct", value: String(freightFeePct) });
   }
-  if (!paymentRail || !VALID_RAILS.includes(paymentRail)) {
-    return { ok: false, error: "Payment rail must be STRIPE or DWOLLA" };
+  if (paymentRail) {
+    if (!VALID_RAILS.includes(paymentRail)) return { ok: false, error: "Payment rail must be STRIPE or DWOLLA" };
+    coreUpdates.push({ key: "paymentRail", value: paymentRail });
   }
   // 0.017h ≈ 1 minute minimum, 720h = 30 days maximum.
-  if (inspectionWindowHours === null || inspectionWindowHours < 0.017 || inspectionWindowHours > 720) {
-    return { ok: false, error: "Inspection window must be 0.02–720 hours" };
+  if (inspectionWindowHours !== null) {
+    if (inspectionWindowHours < 0.017 || inspectionWindowHours > 720) return { ok: false, error: "Inspection window must be 0.02–720 hours" };
+    coreUpdates.push({ key: "inspectionWindowMs", value: String(Math.round(inspectionWindowHours * 3_600_000)) });
   }
-  if (disputeProofWindowHours === null || disputeProofWindowHours < 0.017 || disputeProofWindowHours > 720) {
-    return { ok: false, error: "Dispute proof window must be 0.02–720 hours" };
+  if (disputeProofWindowHours !== null) {
+    if (disputeProofWindowHours < 0.017 || disputeProofWindowHours > 720) return { ok: false, error: "Dispute proof window must be 0.02–720 hours" };
+    coreUpdates.push({ key: "disputeProofWindowMs", value: String(Math.round(disputeProofWindowHours * 3_600_000)) });
   }
 
   // Financing fields are optional: the main /settings form doesn't post them
@@ -130,15 +139,7 @@ async function updatePlatformSettingsActionInner(formData: FormData): Promise<Se
     financingUpdates.push({ key: "financingMaxOutstandingCents", value: String(Math.round(financingMaxOutstandingDollars * 100)) });
   }
 
-  const updates: Array<{ key: string; value: string }> = [
-    { key: "platformFeeBps", value: String(platformFeeBps) },
-    { key: "weightTolerancePct", value: String(weightTolerancePct) },
-    { key: "freightFeePct", value: String(freightFeePct) },
-    { key: "paymentRail", value: paymentRail },
-    { key: "inspectionWindowMs", value: String(Math.round(inspectionWindowHours * 3_600_000)) },
-    { key: "disputeProofWindowMs", value: String(Math.round(disputeProofWindowHours * 3_600_000)) },
-    ...financingUpdates,
-  ];
+  const updates: Array<{ key: string; value: string }> = [...coreUpdates, ...financingUpdates];
 
   try {
     await prisma.$transaction(async (tx) => {
