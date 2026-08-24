@@ -71,11 +71,20 @@
   </div>
 
   <div class="card" style="margin-bottom:16px">
-    <div class="row"><span class="lbl">Listing</span><span>Lot 204 — Black Angus steers (45 hd)</span></div>
-    <div class="row"><span class="lbl">Price</span><span class="big">$30,400.00</span></div>
+    <div class="row"><span class="lbl">Listing</span><span>Lot 204 — Black Angus steers (36 hd)</span></div>
+    <div class="row"><span class="lbl">Price</span><span class="big">$24,000.00</span></div>
     <div class="row"><span class="lbl">Financing cap</span><span>$25,000 <span class="muted" style="font-weight:400">(Avvance limit)</span></span></div>
-    <div class="row" id="capRow"><span class="lbl">Financing eligibility</span><span class="tag bad">Above $25k cap — cash only</span></div>
-    <div class="row"><span class="lbl">Financing now</span><span class="tag ok">Available</span></div>
+    <div class="row" id="capRow"><span class="lbl">Financing eligibility</span><span class="tag ok" id="capTag">Under $25k cap</span></div>
+    <div class="row">
+      <span class="lbl">Demo lot</span>
+      <span class="muted">
+        <label class="check" style="margin:0;align-items:center">
+          <input type="checkbox" id="overCap" onchange="toggleCap(this.checked)" />
+          Above cap (shows the gate)
+        </label>
+      </span>
+    </div>
+    <div class="row"><span class="lbl">Financing option</span><span id="finOption" class="tag ok">Available</span></div>
   </div>
 
   <!-- Step 0: Choose -->
@@ -83,12 +92,12 @@
     <h2>How would you like to pay?</h2>
     <div class="btnrow" style="margin-top:4px">
       <button class="btn ghost" onclick="choose('cash')">Pay with my bank rail</button>
-      <button class="btn primary" onclick="choose('bank')">Finance through our bank partner</button>
+      <button class="btn primary" id="finBtn" onclick="choose('bank')">Finance through our bank partner</button>
     </div>
     <p class="note">
       Selecting “Finance” creates the deal draft immediately (locks price, holds the lot) and hands off
       to the bank. Cash keeps you on the existing escrow-funding flow. Deferred platform financing
-      (Pay later) has been retired.
+      (Pay later) has been retired. Lots above the $25k cap are cash-only — the gating demo toggle applies it.
     </p>
   </section>
 
@@ -100,9 +109,10 @@
       <b>agricultural or business purposes</b> — breeding, feeding, resale, or farm use — and not personal,
       family, or household use.</label>
       <p class="note">Required to keep this credit agricultural-purpose (Regulation&nbsp;Z,&nbsp;12&nbsp;CFR&nbsp;§1026.3(a)(1) exempt).</p>
+    <p class="note bad-line hidden" id="attestErr">Please attest the agricultural/business purpose to continue.</p>
     </div>
-    <div class="row"><span class="lbl">Platform origination fee</span><span>1.0% → $304.00 <span class="muted">(financed into loan)</span></span></div>
-    <div class="row"><span class="lbl">Loan total</span><span class="big">$30,704.00</span></div>
+    <div class="row"><span class="lbl">Platform origination fee</span><span>1.0% → $240.00 <span class="muted">(financed into loan)</span></span></div>
+    <div class="row"><span class="lbl">Loan total</span><span class="big">$24,240.00 <span class="muted">(under $25k cap)</span></span></div>
     <div class="row"><span class="lbl">Bank terms</span><span class="muted">Personalized — shown by the bank</span></div>
     <div class="btnrow">
       <button class="btn primary" id="attestBtn" onclick="attest(true)">Continue to bank</button>
@@ -114,7 +124,7 @@
   <section id="s2" class="card hidden">
     <h2>Draft escrow <span class="tag wait">DRAFT</span></h2>
     <div class="row"><span class="lbl">Reference</span><span id="refDraft">ESC-…</span></div>
-    <div class="row"><span class="lbl">Sale + fee</span><span id="draftAmt">$30,704.00</span></div>
+    <div class="row"><span class="lbl">Sale + fee</span><span id="draftAmt">$24,240.00</span></div>
     <div class="row"><span class="lbl">Lot held</span><span class="tag wait">Yes — while awaiting bank decision</span></div>
     <p class="muted" style="margin:10px 0 0">Draft preserves the deal at today’s price. Redirecting you to the bank’s application…</p>
   </section>
@@ -133,10 +143,10 @@
   <!-- Step 4: Decide -- approval -->
   <section id="s4-ok" class="card hidden">
     <h2>Approved <span class="tag ok">FUNDED</span></h2>
-    <div class="row"><span class="lbl">Disbursement</span><span>$30,704.00 <span class="muted">(sale + origination fee)</span></span></div>
-    <div class="row"><span class="lbl">To seller</span><span class="ok-line">$30,400.00 (full price)</span></div>
-    <div class="row"><span class="lbl">Platform fee</span><span>$304.00 → PLATFORM_REVENUE</span></div>
-    <div class="row"><span class="lbl">You owe the bank</span><span>$30,704.00 + bank terms</span></div>
+    <div class="row"><span class="lbl">Disbursement</span><span>$24,240.00 <span class="muted">(sale + origination fee)</span></span></div>
+    <div class="row"><span class="lbl">To seller</span><span class="ok-line">$24,000.00 (full price)</span></div>
+    <div class="row"><span class="lbl">Platform fee</span><span>$240.00 → PLATFORM_REVENUE</span></div>
+    <div class="row"><span class="lbl">You owe the bank</span><span>$24,240.00 + bank terms</span></div>
     <p class="note">Webhook `/api/webhooks/bank` confirmed disbursement. No buyer-wallet debit — you repay the bank, not the platform.</p>
     <button class="btn primary" onclick="backTo(0)">Done</button>
   </section>
@@ -178,12 +188,32 @@
   function backTo(i){ mark(i); show("s0"); }
   function attest(){
     const check=document.getElementById("agCheck").checked;
-    if(!check){ alert("Attest the agricultural/business purpose first."); return; }
+    if(!check){
+      const ae=document.getElementById("attestErr");
+      if(ae){ ae.classList.remove("hidden"); }
+      return;
+    }
     mark(2); show("s2");
     setTimeout(()=>{ mark(3); show("s3"); }, 900);
   }
   function declineCash(){ mark(6); show("s5"); }
   function abandon(){ mark(6); show("s5"); }
+  function toggleCap(over){
+    const capTag=document.getElementById("capTag");
+    const finOption=document.getElementById("finOption");
+    const finBtn=document.getElementById("finBtn");
+    if(over){
+      capTag.textContent="Above $25k cap"; capTag.className="tag bad";
+      finOption.textContent="Cash only"; finOption.className="tag bad";
+      finBtn.disabled=true; finBtn.style.opacity=".45";
+      finBtn.textContent="Cash only — above financing cap";
+    } else {
+      capTag.textContent="Under $25k cap"; capTag.className="tag ok";
+      finOption.textContent="Available"; finOption.className="tag ok";
+      finBtn.disabled=false; finBtn.style.opacity="";
+      finBtn.textContent="Finance through our bank partner";
+    }
+  }
 
   // demo handlers in step 3
   document.querySelector('#s3 .ok-line').addEventListener('click', ()=>{ mark(4); show("s4-ok"); });
