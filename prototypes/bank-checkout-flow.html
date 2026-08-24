@@ -37,7 +37,7 @@
     border:0; font-size:14px; font-weight:600; cursor:pointer; }
   .btn.primary { background:var(--barn); color:#fff; }
   .btn.ghost { background:transparent; color:var(--cream3); border:1px solid var(--line); }
-  .btn:disabled { opacity:.45; cursor:not-allowed; }
+  .btn:disabled { opacity:.6; cursor:not-allowed; filter:saturate(.25); }
   .btnrow { display:flex; gap:10px; flex-wrap:wrap; align-items:center; }
   .check { display:flex; gap:8px; align-items:flex-start; font-size:13px; color:var(--cream3); }
   .check input { margin-top:1px; }
@@ -105,11 +105,12 @@
   <section id="s1" class="card hidden">
     <h2>Purpose &amp; terms</h2>
     <div class="attest" id="attest">
-      <label class="check"><input type="checkbox" id="agCheck" /> I certify this purchase is for
+      <label class="check"><input type="checkbox" id="agCheck" onchange="clearAttestErr()" /> I certify this purchase is for
       <b>agricultural or business purposes</b> — breeding, feeding, resale, or farm use — and not personal,
       family, or household use.</label>
       <p class="note">Required to keep this credit agricultural-purpose (Regulation&nbsp;Z,&nbsp;12&nbsp;CFR&nbsp;§1026.3(a)(1) exempt).</p>
     <p class="note bad-line hidden" id="attestErr">Please attest the agricultural/business purpose to continue.</p>
+    <p class="note bad-line hidden" id="capGateErr">This lot is above the $25,000 financing cap, so financing is unavailable. Choose "Pay with my bank rail" instead.</p>
     </div>
     <div class="row"><span class="lbl">Platform origination fee</span><span>1.0% → $240.00 <span class="muted">(financed into loan)</span></span></div>
     <div class="row"><span class="lbl">Loan total</span><span class="big">$24,240.00 <span class="muted">(under $25k cap)</span></span></div>
@@ -186,7 +187,18 @@
     else { mark(6); show("s5"); }
   }
   function backTo(i){ mark(i); show("s0"); }
+  function clearAttestErr(){
+    const ae=document.getElementById("attestErr");
+    if(ae && !ae.classList.contains("hidden")){ ae.classList.add("hidden"); }
+  }
   function attest(){
+    const over=document.getElementById("overCap");
+    if(over && over.checked){
+      // A flow already in progress must not reach the bank when over-cap.
+      const ae=document.getElementById("capGateErr");
+      if(ae){ ae.classList.remove("hidden"); }
+      return;
+    }
     const check=document.getElementById("agCheck").checked;
     if(!check){
       const ae=document.getElementById("attestErr");
