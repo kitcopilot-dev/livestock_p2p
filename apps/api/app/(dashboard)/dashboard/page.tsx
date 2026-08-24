@@ -5,6 +5,7 @@ import { getCurrentUser } from "../../../lib/auth";
 import { getDemoUserForRole } from "../../../lib/demoAuth";
 import { compactMoney } from "../../../lib/format";
 import { ListingCard } from "../../../components/ListingCard";
+import { PayNowShortcut } from "../../../components/PayNowShortcut";
 import type { UserRole } from "@livestock/db";
 
 export const dynamic = "force-dynamic";
@@ -28,7 +29,7 @@ export default async function DashboardPage() {
           Viewing as {roles.join(" + ")}
         </div>
       )}
-      {roles.includes("BUYER") && <BuyerHome />}
+      {roles.includes("BUYER") && <BuyerHome currentUserId={current?.id} />}
       {roles.includes("SELLER") && <SellerHome currentUserId={current?.id} />}
       {roles.includes("HAULER") && <HaulerHome currentUserId={current?.id} />}
       {roles.includes("PLATFORM") && <PlatformHome />}
@@ -37,13 +38,22 @@ export default async function DashboardPage() {
   );
 }
 
-async function BuyerHome() {
-  const listings = await prisma.listing.findMany({
-    where: { status: "ACTIVE" },
-    orderBy: { createdAt: "desc" },
-    take: 6,
-    include: { seller: { select: { id: true, name: true } } },
-  });
+async function BuyerHome({ currentUserId }: { currentUserId?: string }) {
+  const [listings, financed] = await Promise.all([
+    prisma.listing.findMany({
+      where: { status: "ACTIVE" },
+      orderBy: { createdAt: "desc" },
+      take: 6,
+      include: { seller: { select: { id: true, name: true } } },
+    }),
+    currentUserId
+      ? prisma.escrowTransaction.findMany({
+          where: { buyerId: currentUserId, status: "PENDING_PAYMENT" },
+          orderBy: { paymentDeadlineAt: "asc" },
+          include: { seller: { select: { name: true } } },
+        })
+      : Promise.resolve([]),
+  ]);
 
   return (
     <section className="space-y-5">
@@ -67,6 +77,8 @@ async function BuyerHome() {
         </div>
       </div>
 
+      {financed.length > 0 && <FinancingSection escrows={financed} />}
+
       <div className="flex items-center justify-between">
         <h2 className="font-display text-lg font-semibold text-cream-50">Featured lots</h2>
         <Link href="/marketplace" className="text-sm font-medium text-hay-300 hover:text-hay-200">View all →</Link>
@@ -82,6 +94,69 @@ async function BuyerHome() {
       )}
     </section>
   );
+}
+
+/**
+ * Open deferred-payment escrows for the buyer: amount due (sale + financing
+ * fee), days until the payment deadline, and a Pay now shortcut.
+ */
+function FinancingSection({ escrows }: { escrows: Array<{ id: string; reference: string; saleAmountCents: number; financingFeeCents: number | null; paymentDeadlineAt: Date | null; seller: { name: string | null } }> }) {
+  const totalDue = escrows.reduce((sum, e) => sum + e.saleAmountCents + (e.financingFeeCents ?? 0), 0);
+
+  return (
+    <section className="card overflow-hidden">
+      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-dirt-700/70 px-5 py-4">
+        <div>
+          <h2 className="flex items-center gap-2 font-display text-lg font-semibold text-cream-50">
+            <span aria-hidden>💳</span> Financing due
+          </h2>
+          <p className="mt-0.5 text-xs text-cream-500">
+            {escrows.length} deferred-payment escrow{escrows.length === 1 ? "" : "s"} · {dollars(totalDue)} outstanding
+          </p>
+        </div>
+        <Link href="/escrows" className="text-sm font-medium text-hay-300 hover:text-hay-200">View escrows →</Link>
+      </div>
+      <ul className="divide-y divide-dirt-700/50">
+        {escrows.map((e) => {
+          const due = e.saleAmountCents + (e.financingFeeCents ?? 0);
+          const daysLeft = e.paymentDeadlineAt
+            ? Math.max(0, Math.ceil((e.paymentDeadlineAt.getTime() - Date.now()) / 86_400_000))
+            : null;
+          const urgency =
+            daysLeft === null ? "" : daysLeft <= 3 ? "border-barn-500/60 bg-barn-500/15 text-barn-200" : daysLeft <= 7 ? "border-hay-500/50 bg-hay-500/15 text-hay-200" : "border-dirt-600 bg-dirt-800 text-cream-300";
+          const dot = daysLeft === null ? "bg-cream-500" : daysLeft <= 3 ? "bg-barn-400" : daysLeft <= 7 ? "bg-hay-300" : "bg-pasture-400";
+
+          return (
+            <li key={e.id} className="flex flex-wrap items-center justify-between gap-3 px-5 py-3.5">
+              <div className="min-w-0">
+                <Link href={`/escrows/${e.id}`} className="font-mono text-sm font-semibold text-cream-100 transition-colors hover:text-hay-200">
+                  {e.reference}
+                </Link>
+                <p className="mt-0.5 truncate text-xs text-cream-500">
+                  {e.seller.name ?? "Seller"}
+                  {e.financingFeeCents ? ` · includes ${dollars(e.financingFeeCents)} financing fee` : ""}
+                </p>
+              </div>
+              <div className="flex items-center gap-3">
+                {daysLeft !== null && (
+                  <span className={`pill ${urgency}`}>
+                    <span className={`dot ${dot}`} />
+                    {daysLeft === 0 ? "due today" : `${daysLeft} day${daysLeft === 1 ? "" : "s"} left`}
+                  </span>
+                )}
+                <span className="text-sm font-semibold tabular-nums text-cream-100">{dollars(due)}</span>
+                <PayNowShortcut escrowId={e.id} />
+              </div>
+            </li>
+          );
+        })}
+      </ul>
+    </section>
+  );
+}
+
+function dollars(cents: number): string {
+  return `$${(cents / 100).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 }
 
 
