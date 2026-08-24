@@ -74,7 +74,7 @@ async function reenqueueExpiredInspections(
     await queues.inspectionTimeout.add(
       "inspection-timeout",
       { escrowId: escrow.id },
-      { jobId: `inspection:${escrow.id}`, delay: 0, attempts: 3, backoff: { type: "exponential", delay: 5_000 } },
+      { jobId: `inspection-${escrow.id}`, delay: 0, attempts: 3, backoff: { type: "exponential", delay: 5_000 } },
     );
     count += 1;
   }
@@ -103,7 +103,7 @@ async function reenqueueExpiredFinancingDeadlines(
     await queues.financingDeadline.add(
       "financing-deadline",
       { escrowId: escrow.id },
-      { jobId: `financing:${escrow.id}`, delay: 0, attempts: 3, backoff: { type: "exponential", delay: 5_000 } },
+      { jobId: `financing-${escrow.id}`, delay: 0, attempts: 3, backoff: { type: "exponential", delay: 5_000 } },
     );
     count += 1;
   }
@@ -132,7 +132,7 @@ async function reenqueueExpiredDisputeDeadlines(
     await queues.disputeProofDeadline.add(
       "dispute-proof-deadline",
       { escrowId: escrow.id },
-      { jobId: `dispute:${escrow.id}`, delay: 0, attempts: 3, backoff: { type: "exponential", delay: 5_000 } },
+      { jobId: `dispute-${escrow.id}`, delay: 0, attempts: 3, backoff: { type: "exponential", delay: 5_000 } },
     );
     count += 1;
   }

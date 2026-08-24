@@ -74,7 +74,7 @@ export async function scheduleInspectionTimeout(
     { escrowId } satisfies InspectionTimeoutJobData,
     {
       delay: delayMs,
-      jobId: `inspection:${escrowId}`,
+      jobId: `inspection-${escrowId}`,
     },
   );
   logger.info({ escrowId, delayMs, jobId: job.id }, "scheduled inspection timeout");
@@ -109,7 +109,7 @@ export async function scheduleDisputeProofDeadline(
     { escrowId },
     {
       delay: delayMs,
-      jobId: `dispute:${escrowId}`,
+      jobId: `dispute-${escrowId}`,
     },
   );
   logger.info({ escrowId, delayMs, jobId: job.id }, "scheduled dispute proof deadline");
@@ -144,7 +144,7 @@ export async function scheduleFinancingDeadline(
     { escrowId } satisfies FinancingDeadlineJobData,
     {
       delay: delayMs,
-      jobId: `financing:${escrowId}`,
+      jobId: `financing-${escrowId}`,
     },
   );
   logger.info({ escrowId, delayMs, jobId: job.id }, "scheduled financing deadline");
@@ -162,7 +162,7 @@ export async function scheduleSettlementRetry(
     { escrowId },
     {
       delay: delayMs,
-      jobId: `settle-retry:${escrowId}`,
+      jobId: `settle-retry-${escrowId}`,
     },
   );
   logger.info({ escrowId, jobId: job.id }, "scheduled settlement retry");
