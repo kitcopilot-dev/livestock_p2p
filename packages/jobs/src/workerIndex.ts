@@ -3,6 +3,7 @@ import { createWorkerConnection } from "./queues";
 import { createInspectionTimeoutWorker } from "./workers/inspectionTimeout";
 import { createDisputeProofDeadlineWorker } from "./workers/disputeProofDeadline";
 import { createSettlementRetryWorker } from "./workers/settlementRetry";
+import { createFinancingDeadlineWorker } from "./workers/financingDeadline";
 import { createSweepWorker, scheduleSweep } from "./workers/reconciliationSweep";
 import { createQueues } from "./queues";
 import { logger } from "./logger";
@@ -19,6 +20,7 @@ async function main(): Promise<void> {
     createInspectionTimeoutWorker(connection),
     createDisputeProofDeadlineWorker(connection),
     createSettlementRetryWorker(connection),
+    createFinancingDeadlineWorker(connection),
     createSweepWorker(connection),
   ];
 

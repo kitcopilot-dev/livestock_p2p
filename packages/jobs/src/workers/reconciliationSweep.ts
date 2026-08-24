@@ -23,10 +23,13 @@ import type IORedis from "ioredis";
 export async function runReconciliationSweep(
   queues: ReturnType<typeof createQueues>,
   now: Date = new Date(),
-): Promise<{ enqueuedInspection: number; enqueuedDispute: number }> {
-  const enqueuedInspection = await reenqueueExpiredInspections(queues, now);
-  const enqueuedDispute = await reenqueueExpiredDisputeDeadlines(queues, now);
-  return { enqueuedInspection, enqueuedDispute };
+): Promise<{ enqueuedInspection: number; enqueuedDispute: number; enqueuedFinancing: number }> {
+  const [enqueuedInspection, enqueuedDispute, enqueuedFinancing] = await Promise.all([
+    reenqueueExpiredInspections(queues, now),
+    reenqueueExpiredDisputeDeadlines(queues, now),
+    reenqueueExpiredFinancingDeadlines(queues, now),
+  ]);
+  return { enqueuedInspection, enqueuedDispute, enqueuedFinancing };
 }
 
 /**
@@ -39,6 +42,7 @@ export async function runFullSweep(
 ): Promise<{
   enqueuedInspection: number;
   enqueuedDispute: number;
+  enqueuedFinancing: number;
   deletedResetTokens: number;
   deletedMagicLinks: number;
 }> {
@@ -75,6 +79,35 @@ async function reenqueueExpiredInspections(
     count += 1;
   }
   if (count > 0) logger.info({ count }, "sweep: re-enqueued expired inspections");
+  return count;
+}
+
+async function reenqueueExpiredFinancingDeadlines(
+  queues: ReturnType<typeof createQueues>,
+  now: Date,
+): Promise<number> {
+  const overdue = await prisma.escrowTransaction.findMany({
+    where: {
+      status: "PENDING_PAYMENT",
+      paymentDeadlineAt: { lt: now },
+    },
+    select: { id: true },
+    take: 500,
+  });
+  let count = 0;
+  for (const escrow of overdue) {
+    const receipt = await prisma.scheduleReceipt.findUnique({
+      where: { escrowId_jobKind: { escrowId: escrow.id, jobKind: "FINANCING_DEADLINE" } },
+    });
+    if (receipt?.status === "COMPLETED" || receipt?.status === "SKIPPED") continue;
+    await queues.financingDeadline.add(
+      "financing-deadline",
+      { escrowId: escrow.id },
+      { jobId: `financing:${escrow.id}`, delay: 0, attempts: 3, backoff: { type: "exponential", delay: 5_000 } },
+    );
+    count += 1;
+  }
+  if (count > 0) logger.info({ count }, "sweep: re-enqueued expired financing deadlines");
   return count;
 }
 
@@ -155,6 +188,7 @@ export async function scheduleSweep(
 export async function runSweepOnce(): Promise<{
   enqueuedInspection: number;
   enqueuedDispute: number;
+  enqueuedFinancing: number;
   deletedResetTokens: number;
   deletedMagicLinks: number;
 }> {

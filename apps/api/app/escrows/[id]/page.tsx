@@ -26,6 +26,8 @@ const MILESTONE_LABELS: Record<MilestoneKind, string> = {
   REFUNDED: "Refunded",
   CANCELLED: "Cancelled",
   SETTLEMENT_FAILED: "Settlement failed (retrying)",
+  PAYMENT_DEADLINE_MISSED: "Payment deadline missed — escrow cancelled",
+  FINANCING_ELECTED: "Deferred payment elected",
 };
 
 const MILESTONE_DOT: Record<string, string> = {
@@ -40,6 +42,8 @@ const MILESTONE_DOT: Record<string, string> = {
   REFUNDED: "bg-teal-300",
   CANCELLED: "bg-cream-500",
   SETTLEMENT_FAILED: "bg-barn-400",
+  PAYMENT_DEADLINE_MISSED: "bg-barn-400",
+  FINANCING_ELECTED: "bg-plum-400",
 };
 
 const DISPUTE_REASONS: Record<string, string> = {
@@ -108,7 +112,12 @@ export default async function EscrowDetailPage({ params }: { params: Promise<{ i
       </div>
 
       {escrow.status === "PENDING_PAYMENT" && (
-        <PendingPaymentBanner escrowId={escrow.id} amountCents={escrow.saleAmountCents} />
+        <PendingPaymentBanner
+          escrowId={escrow.id}
+          amountCents={escrow.saleAmountCents}
+          paymentDeadlineAt={escrow.paymentDeadlineAt}
+          financingFeeCents={escrow.financingFeeCents}
+        />
       )}
 
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
@@ -132,6 +141,9 @@ export default async function EscrowDetailPage({ params }: { params: Promise<{ i
               <InfoRow label="Price / lb" value={`$${pricePerLb.toFixed(2)}`} />
               <InfoRow label="Weight tolerance" value={`±${escrow.weightTolerancePct}%`} />
               <InfoRow label="Fee basis points" value={`${escrow.platformFeeBps} bps`} />
+              {escrow.financingFeeCents !== null && escrow.financingFeeCents > 0 && (
+                <InfoRow label="Financing fee" value={money(escrow.financingFeeCents)} />
+              )}
               <InfoRow label="Version" value={`v${escrow.version}`} />
             </dl>
           </section>

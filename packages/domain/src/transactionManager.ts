@@ -5,6 +5,7 @@ import {
   type DisputeReason,
   type EscrowTransaction,
   type EscrowStatus,
+  type LedgerEntryType,
 } from "@livestock/db";
 import { auditLogger } from "@livestock/compliance";
 import {
@@ -144,17 +145,45 @@ export class TransactionManager {
           accountType: "USER_WALLET",
           ownerUserId: escrow.buyerId,
         });
-        await postEntry(tx, {
-          leg: {
-            debitAccountId: buyerWallet.id,
-            creditAccountId: escrowAccount.id,
-            amountCents: cents(escrow.saleAmountCents),
+        const legs: Array<{
+          leg: { debitAccountId: string; creditAccountId: string; amountCents: Cents };
+          entryType: LedgerEntryType;
+          idempotencyKey: string;
+        }> = [
+          {
+            leg: {
+              debitAccountId: buyerWallet.id,
+              creditAccountId: escrowAccount.id,
+              amountCents: cents(escrow.saleAmountCents),
+            },
+            entryType: "FUNDING",
+            idempotencyKey: fundingKey(escrowId),
           },
-          entryType: "FUNDING",
-          transactionId: escrowId,
-          idempotencyKey: fundingKey(escrowId),
-          description: `Buyer funding for ${escrow.reference}`,
-        });
+        ];
+        // A financed escrow owes the financing fee at funding time: debit the
+        // buyer wallet again and credit platform revenue, posted atomically
+        // with the funding entry.
+        if (escrow.financingFeeCents) {
+          const revenueAccount = await ensureLedgerAccount(tx, { accountType: "PLATFORM_REVENUE" });
+          legs.push({
+            leg: {
+              debitAccountId: buyerWallet.id,
+              creditAccountId: revenueAccount.id,
+              amountCents: cents(escrow.financingFeeCents),
+            },
+            entryType: "FINANCING_FEE",
+            idempotencyKey: `${fundingKey(escrowId)}:financing-fee`,
+          });
+        }
+        for (const { leg, entryType, idempotencyKey } of legs) {
+          await postEntry(tx, {
+            leg,
+            entryType,
+            transactionId: escrowId,
+            idempotencyKey,
+            description: `Buyer funding for ${escrow.reference}`,
+          });
+        }
 
         const updated = await tx.escrowTransaction.update({
           where: { id: escrowId },
@@ -179,20 +208,45 @@ export class TransactionManager {
 
   /**
    * Moves an escrow from DRAFT to PENDING_PAYMENT (financing option).
-   * The buyer can pay later from the escrow detail page.
+   * Stamps paymentDeadlineAt (the auto-cancel instant) and the financing fee
+   * owed at funding time, both derived from the platform financing terms the
+   * API passes in. The buyer can pay later from the escrow detail page.
    */
-  async markPendingPayment(escrowId: string, ctx: { actor: EscrowActor; userId?: string }): Promise<EscrowTransaction> {
+  async markPendingPayment(
+    escrowId: string,
+    ctx: { actor: EscrowActor; userId?: string },
+    opts: { paymentDeadlineAt?: Date; financingFeeBps?: number } = {},
+  ): Promise<EscrowTransaction> {
     const now = this.now();
     return runEscrowTransaction(
       async (tx) => {
         const escrow = await lockEscrow(tx, escrowId);
         assertTransition(escrow.status, "PENDING_PAYMENT", { escrow, actor: ctx.actor, now });
+        const financingFeeCents =
+          opts.financingFeeBps !== undefined
+            ? roundHalfUp((escrow.saleAmountCents * opts.financingFeeBps) / 10_000)
+            : escrow.financingFeeCents;
         const updated = await tx.escrowTransaction.update({
           where: { id: escrowId },
-          data: { status: "PENDING_PAYMENT", version: { increment: 1 } },
+          data: {
+            status: "PENDING_PAYMENT",
+            paymentDeadlineAt: opts.paymentDeadlineAt ?? escrow.paymentDeadlineAt,
+            financingFeeCents,
+            version: { increment: 1 },
+          },
         });
         await tx.milestone.create({
-          data: { escrowId, kind: "CREATED", occurredAt: now, actorUserId: ctx.userId },
+          data: {
+            escrowId,
+            kind: "FINANCING_ELECTED",
+            occurredAt: now,
+            dueAt: opts.paymentDeadlineAt ?? null,
+            actorUserId: ctx.userId,
+            metadata: {
+              paymentDeadlineAt: opts.paymentDeadlineAt?.toISOString() ?? null,
+              financingFeeCents,
+            },
+          },
         });
         await auditLogger.write(tx, {
           actorUserId: ctx.userId,
@@ -201,7 +255,52 @@ export class TransactionManager {
           entityType: "EscrowTransaction",
           entityId: escrowId,
           before: { status: escrow.status },
-          after: { status: "PENDING_PAYMENT" },
+          after: {
+            status: "PENDING_PAYMENT",
+            paymentDeadlineAt: opts.paymentDeadlineAt?.toISOString() ?? null,
+            financingFeeCents,
+          },
+        });
+        return updated;
+      },
+    );
+  }
+
+  /**
+   * Financing-deadline auto-cancel: PENDING_PAYMENT -> CANCELLED with a
+   * PAYMENT_DEADLINE_MISSED milestone. Runs from the scheduled job (or the
+   * sweep backstop); the guard is idempotent so double execution no-ops.
+   */
+  async expireUnfunded(escrowId: string, ctx: { actor: EscrowActor; userId?: string }): Promise<EscrowTransaction> {
+    const now = this.now();
+    return runEscrowTransaction(
+      async (tx) => {
+        const escrow = await lockEscrow(tx, escrowId);
+        assertTransition(escrow.status, "CANCELLED", { escrow, actor: ctx.actor, now });
+        const updated = await tx.escrowTransaction.update({
+          where: { id: escrowId },
+          data: { status: "CANCELLED", version: { increment: 1 } },
+        });
+        await tx.milestone.create({
+          data: {
+            escrowId,
+            kind: "PAYMENT_DEADLINE_MISSED",
+            occurredAt: now,
+            actorUserId: ctx.userId,
+            metadata: { paymentDeadlineAt: escrow.paymentDeadlineAt?.toISOString() ?? null },
+          },
+        });
+        await auditLogger.write(tx, {
+          actorUserId: ctx.userId,
+          actorRole: ctx.actor,
+          action: "ESCROW_PAYMENT_DEADLINE_MISSED",
+          entityType: "EscrowTransaction",
+          entityId: escrowId,
+          before: {
+            status: escrow.status,
+            paymentDeadlineAt: escrow.paymentDeadlineAt?.toISOString() ?? null,
+          },
+          after: { status: "CANCELLED" },
         });
         return updated;
       },

@@ -1,5 +1,11 @@
 import { prisma } from "@livestock/db";
-import { createQueues, createProducerConnection, QUEUE_NAMES, type InspectionTimeoutJobData } from "./queues";
+import {
+  createQueues,
+  createProducerConnection,
+  QUEUE_NAMES,
+  type FinancingDeadlineJobData,
+  type InspectionTimeoutJobData,
+} from "./queues";
 import type { Queue } from "bullmq";
 import { logger } from "./logger";
 
@@ -107,6 +113,41 @@ export async function scheduleDisputeProofDeadline(
     },
   );
   logger.info({ escrowId, delayMs, jobId: job.id }, "scheduled dispute proof deadline");
+}
+
+/**
+ * Schedules the financing auto-cancel job. Called by the API immediately
+ * after markPendingPayment() stamps paymentDeadlineAt. jobId dedupes.
+ */
+export async function scheduleFinancingDeadline(
+  escrowId: string,
+  paymentDeadlineAt: Date,
+  deps: SchedulerDeps = {},
+): Promise<void> {
+  const queues = getQueues(deps);
+  const now = deps.clock?.() ?? new Date();
+  const delayMs = Math.max(0, paymentDeadlineAt.getTime() - now.getTime());
+
+  await prisma.scheduleReceipt.upsert({
+    where: { escrowId_jobKind: { escrowId, jobKind: "FINANCING_DEADLINE" } },
+    create: {
+      escrowId,
+      jobKind: "FINANCING_DEADLINE",
+      scheduledFor: paymentDeadlineAt,
+      status: "SCHEDULED",
+    },
+    update: { scheduledFor: paymentDeadlineAt, status: "SCHEDULED", completedAt: null },
+  });
+
+  const job = await queues.financingDeadline.add(
+    "financing-deadline",
+    { escrowId } satisfies FinancingDeadlineJobData,
+    {
+      delay: delayMs,
+      jobId: `financing:${escrowId}`,
+    },
+  );
+  logger.info({ escrowId, delayMs, jobId: job.id }, "scheduled financing deadline");
 }
 
 /** Retry queue for failed settlement legs (exponential backoff, DLQ after max). */

@@ -18,6 +18,7 @@ import { processEscrowSettlement } from "@livestock/payments";
 import { getDemoUser, demoWindowsFromCookie, actorForDemoRole } from "../../lib/demoAuth";
 import { isDemoMode } from "../../lib/auth";
 import { getPlatformSettings } from "../../lib/platformSettings";
+import { financeEscrow } from "../../lib/financing";
 
 export interface ActionResult {
   ok: boolean;
@@ -203,8 +204,8 @@ export async function createFinancedEscrowAction(
 ): Promise<ActionResult> {
   try {
     const user = await getDemoUser();
-    const tm = new TransactionManager();
-    await tm.markPendingPayment(escrowId, { actor: "BUYER", userId: user.id });
+    const res = await financeEscrow(escrowId, user.id);
+    if (!res.ok) return { ok: false, error: res.error };
     revalidatePath("/escrows");
     revalidatePath(`/escrows/${escrowId}`);
     return { ok: true, escrowId };

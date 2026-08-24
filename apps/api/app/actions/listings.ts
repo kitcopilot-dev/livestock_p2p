@@ -8,6 +8,7 @@ import { estimateRouteMiles } from "@livestock/shared";
 import { getDemoUser, demoWindowsFromCookie } from "../../lib/demoAuth";
 import { isDemoMode } from "../../lib/auth";
 import { getPlatformSettings } from "../../lib/platformSettings";
+import { assertFinancingEligible, financeEscrow } from "../../lib/financing";
 
 export interface ListingActionResult {
   ok: boolean;
@@ -117,18 +118,14 @@ export async function updateListingStatusAction(listingId: string, status: Listi
   }
 }
 
-export async function createEscrowFromListingAction(listingId: string): Promise<ListingActionResult> {
+export async function createEscrowFromListingAction(
+  listingId: string,
+  financed = false,
+): Promise<ListingActionResult> {
   try {
     const buyer = await getDemoUser();
     const listing = await prisma.listing.findUnique({ where: { id: listingId } });
     if (!listing || listing.status !== "ACTIVE") return { ok: false, error: "Listing is not available" };
-
-    // Assign a carrier. Prefer a hauler other than the demo role user so the
-    // load board accept flow has a visible reassignment to demonstrate.
-    const hauler =
-      (await prisma.user.findFirst({ where: { role: "HAULER", email: { not: "demo.hauler@livestock.local" } } })) ??
-      (await prisma.user.findFirst({ where: { role: "HAULER" } }));
-    if (!hauler) return { ok: false, error: "No hauler available" };
 
     // Sale amount honors the listing's pricing unit: per-head lots price by
     // head count; per-pound lots price by contracted weight. This is exact,
@@ -137,6 +134,24 @@ export async function createEscrowFromListingAction(listingId: string): Promise<
       listing.priceType === "PER_HEAD" && listing.pricePerHeadCents
         ? listing.pricePerHeadCents * listing.headCount
         : listing.pricePerLbCents * listing.avgWeightLbs * listing.headCount;
+
+    // Check financing eligibility BEFORE creating anything, so a failed
+    // financing choice never leaves the listing marked SOLD.
+    if (financed) {
+      const eligibilityError = await assertFinancingEligible({
+        buyerId: buyer.id,
+        saleAmountCents,
+      });
+      if (eligibilityError) return { ok: false, error: eligibilityError };
+    }
+
+    // Assign a carrier. Prefer a hauler other than the demo role user so the
+    // load board accept flow has a visible reassignment to demonstrate.
+    const hauler =
+      (await prisma.user.findFirst({ where: { role: "HAULER", email: { not: "demo.hauler@livestock.local" } } })) ??
+      (await prisma.user.findFirst({ where: { role: "HAULER" } }));
+    if (!hauler) return { ok: false, error: "No hauler available" };
+
     const platform = await getPlatformSettings();
     const freightFeeCents = Math.round((saleAmountCents * platform.freightFeePct) / 100);
     const platformFeeBps = platform.platformFeeBps;
@@ -182,10 +197,19 @@ export async function createEscrowFromListingAction(listingId: string): Promise<
       },
     });
 
-    // Auto-fund the escrow: ledger-only fund via the transaction manager.
-    // The buyer can then fund their escrow manually from the escrow detail page.
-    // In dry-run mode, the fund action is a no-op state transition.
-    await tm.fund(escrow.id, { actor: "BUYER", userId: buyer.id });
+    if (financed) {
+      // Deferred payment: stamp the financing terms and let the deadline job
+      // auto-cancel if the buyer never funds.
+      const res = await financeEscrow(escrow.id, buyer.id);
+      if (!res.ok) {
+        await prisma.listing.update({ where: { id: listingId }, data: { status: "ACTIVE" } });
+        await prisma.load.deleteMany({ where: { escrowId: escrow.id } });
+        return { ok: false, error: res.error };
+      }
+    } else {
+      // Auto-fund the escrow: ledger-only fund via the transaction manager.
+      await tm.fund(escrow.id, { actor: "BUYER", userId: buyer.id });
+    }
 
     revalidatePath("/marketplace");
     revalidatePath("/seller");

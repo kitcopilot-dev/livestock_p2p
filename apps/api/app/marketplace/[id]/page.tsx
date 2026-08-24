@@ -397,10 +397,14 @@ export default async function ListingDetailPage({ params }: { params: Promise<{ 
                 <Link href={`/offers/new?l=${listing.id}`} className="btn-ghost w-full justify-center py-3 text-base">
                   ✏️ Make an offer
                 </Link>
-                <form action={async () => { "use server"; await createEscrowFromListingAction(listing.id); }}>
-                  <button type="submit" className="btn-primary w-full py-3 text-base">Buy now &mdash; escrow protected</button>
+                <form action={async (formData: FormData) => { "use server"; await createEscrowFromListingAction(listing.id, formData.get("financed") === "on"); }}>
+                  <label className="flex cursor-pointer items-center gap-2 text-xs text-cream-400">
+                    <input type="checkbox" name="financed" className="h-4 w-4 rounded border-dirt-600 bg-dirt-900 accent-barn-500" />
+                    Pay later — {platform.financingWindowDays}-day financing ({((platform.financingFeeBps / 100)).toFixed(1)}% fee)
+                  </label>
+                  <button type="submit" className="btn-primary mt-2 w-full py-3 text-base">Buy now &mdash; escrow protected</button>
                 </form>
-                <p className="text-center text-[10px] text-cream-500">Buy now creates and funds an escrow instantly. Make an offer lets you negotiate price.</p>
+                <p className="text-center text-[10px] text-cream-500">Buy now creates and funds an escrow instantly — or check “Pay later” to fund within {platform.financingWindowDays} days. Make an offer lets you negotiate price.</p>
               </div>
             )}
             {isOwner && (

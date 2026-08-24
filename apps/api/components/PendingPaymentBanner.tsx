@@ -2,13 +2,16 @@
 
 import { useState, useTransition } from "react";
 import { fundEscrowLaterAction } from "../app/actions/escrow";
+import { Countdown } from "./Countdown";
 
 type Props = {
   escrowId: string;
   amountCents: number;
+  paymentDeadlineAt: Date | null;
+  financingFeeCents: number | null;
 };
 
-export function PendingPaymentBanner({ escrowId, amountCents }: Props) {
+export function PendingPaymentBanner({ escrowId, amountCents, paymentDeadlineAt, financingFeeCents }: Props) {
   const [pending, startTransition] = useTransition();
   const [error, setError] = useState("");
   const [funded, setFunded] = useState(false);
@@ -35,15 +38,23 @@ export function PendingPaymentBanner({ escrowId, amountCents }: Props) {
     );
   }
 
+  const fee = financingFeeCents ?? 0;
+  const total = amountCents + fee;
+
   return (
-    <div className="rounded-xl border border-hay-500/30 bg-hay-500/10 p-4">
+    <div className="space-y-3 rounded-xl border border-hay-500/30 bg-hay-500/10 p-4">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <p className="text-sm font-semibold text-hay-300">
-            💰 Payment Pending — ${(amountCents / 100).toFixed(2)}
+            💰 Payment Pending — ${(total / 100).toFixed(2)}
+            {fee > 0 && (
+              <span className="ml-1 font-normal text-cream-500">
+                (${(amountCents / 100).toFixed(2)} + ${(fee / 100).toFixed(2)} financing fee)
+              </span>
+            )}
           </p>
           <p className="mt-0.5 text-xs text-cream-500">
-            This escrow was created with deferred payment. Fund it to proceed.
+            This escrow was created with deferred payment. Fund it before the deadline to proceed.
           </p>
         </div>
         <button
@@ -54,6 +65,9 @@ export function PendingPaymentBanner({ escrowId, amountCents }: Props) {
           {pending ? "Processing..." : "Pay Now"}
         </button>
       </div>
+      {paymentDeadlineAt && (
+        <Countdown deadline={paymentDeadlineAt} label="Payment deadline" />
+      )}
       {error && (
         <p className="mt-2 text-xs text-red-400">{error}</p>
       )}

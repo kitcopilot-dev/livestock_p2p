@@ -4,5 +4,6 @@ export * from "./workers/inspectionTimeout";
 export * from "./workers/disputeProofDeadline";
 export * from "./workers/settlementRetry";
 export * from "./workers/reconciliationSweep";
+export * from "./workers/financingDeadline";
 export * from "./workers/tokenCleanup";
 export * from "./logger";

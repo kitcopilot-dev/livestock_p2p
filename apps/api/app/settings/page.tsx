@@ -19,6 +19,10 @@ const SETTING_LABELS: Record<string, string> = {
   paymentRail: "Payout rail",
   inspectionWindowMs: "Inspection window",
   disputeProofWindowMs: "Dispute proof window",
+  financingWindowDays: "Financing window (days)",
+  financingFeeBps: "Financing fee (bps)",
+  financingMaxEscrowCents: "Financing cap per escrow",
+  financingMaxOutstandingCents: "Financing outstanding cap",
 };
 
 /** Extract the stored `value` from an audit before/after JSON blob. */
@@ -37,6 +41,10 @@ function auditValueDisplay(key: string, v: unknown): string {
   if (key === "inspectionWindowMs" || key === "disputeProofWindowMs") {
     const ms = Number(raw);
     return Number.isFinite(ms) ? msToHours(ms) : raw;
+  }
+  if (key === "financingMaxEscrowCents" || key === "financingMaxOutstandingCents") {
+    const c = Number(raw);
+    return Number.isFinite(c) ? `$${(c / 100).toLocaleString("en-US")}` : raw;
   }
   return raw;
 }
@@ -174,6 +182,35 @@ export default async function SettingsPage() {
                   defaultValue={settings.disputeProofWindowMs / 3_600_000} disabled={!isPlatform} className="input" />
                 <span className="mt-1 block text-[11px] text-cream-500">evidence submission after a dispute</span>
               </Field>
+            </div>
+
+            <div className="border-t border-dirt-700/60 pt-5">
+              <h3 className="font-display text-sm font-semibold text-plum-300">Financing (deferred payment)</h3>
+              <p className="mt-0.5 text-xs text-cream-500">
+                Buyers who pick “Pay later” get a committed escrow with this window to fund it before it auto-cancels.
+              </p>
+              <div className="mt-4 grid grid-cols-1 gap-5 sm:grid-cols-2">
+                <Field label="Payment window (days)">
+                  <input name="financingWindowDays" type="number" min="1" max="90" step="1"
+                    defaultValue={settings.financingWindowDays} disabled={!isPlatform} className="input" />
+                  <span className="mt-1 block text-[11px] text-cream-500">days to fund before auto-cancel</span>
+                </Field>
+                <Field label="Financing fee (bps)">
+                  <input name="financingFeeBps" type="number" min="0" max="1000" step="1"
+                    defaultValue={settings.financingFeeBps} disabled={!isPlatform} className="input" />
+                  <span className="mt-1 block text-[11px] text-cream-500">{bpsToPct(settings.financingFeeBps)} of sale, owed at funding</span>
+                </Field>
+                <Field label="Cap per escrow ($)">
+                  <input name="financingMaxEscrowDollars" type="number" min="100" max="10000000" step="any"
+                    defaultValue={settings.financingMaxEscrowCents / 100} disabled={!isPlatform} className="input" />
+                  <span className="mt-1 block text-[11px] text-cream-500">max sale amount that can be financed</span>
+                </Field>
+                <Field label="Outstanding cap per buyer ($)">
+                  <input name="financingMaxOutstandingDollars" type="number" min="100" max="50000000" step="any"
+                    defaultValue={settings.financingMaxOutstandingCents / 100} disabled={!isPlatform} className="input" />
+                  <span className="mt-1 block text-[11px] text-cream-500">max concurrent financed amount per buyer</span>
+                </Field>
+              </div>
             </div>
 
             {isPlatform && (

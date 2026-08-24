@@ -243,4 +243,88 @@ describe("dispute-vs-auto-release race (single winner)", () => {
     const reloaded = await prisma.escrowTransaction.findUnique({ where: { id: escrow.id } });
     expect(reloaded?.status).toBe("ARBITRATION_PROCESSING");
   });
+
+  describe("financing (deferred payment)", () => {
+    it("stamps the payment deadline + financing fee when financing a draft", async () => {
+      const escrow = await newEscrow();
+      const deadline = new Date(Date.now() + 14 * 24 * 3_600_000);
+      const pending = await tm.markPendingPayment(
+        escrow.id,
+        { actor: "BUYER", userId: buyer.id },
+        { paymentDeadlineAt: deadline, financingFeeBps: 100 },
+      );
+      expect(pending.status).toBe("PENDING_PAYMENT");
+      expect(pending.paymentDeadlineAt?.getTime()).toBe(deadline.getTime());
+      // 1% of $100,000 sale = $1,000
+      expect(pending.financingFeeCents).toBe(100_000_00 / 100);
+
+      // A funded escrow can't be financed again.
+      await expect(
+        tm.markPendingPayment(escrow.id, { actor: "BUYER" }, { paymentDeadlineAt: deadline, financingFeeBps: 100 }),
+      ).rejects.toThrowError(IllegalTransitionError);
+    });
+
+    it("posts the financing fee to platform revenue when the escrow is funded", async () => {
+      const escrow = await newEscrow();
+      const deadline = new Date(Date.now() + 7 * 24 * 3_600_000);
+      await tm.markPendingPayment(
+        escrow.id,
+        { actor: "BUYER", userId: buyer.id },
+        { paymentDeadlineAt: deadline, financingFeeBps: 100 },
+      );
+
+      const funded = await tm.fund(escrow.id, { actor: "BUYER", userId: buyer.id });
+      expect(funded.status).toBe("FUNDED");
+      expect(funded.financingFeeCents).toBe(100_000_00 / 100);
+
+      const entries = await prisma.ledgerEntry.findMany({ where: { transactionId: escrow.id } });
+      const funding = entries.find((e) => e.entryType === "FUNDING");
+      const fee = entries.find((e) => e.entryType === "FINANCING_FEE");
+      expect(funding).toBeDefined();
+      expect(funding!.amountCents).toBe(100_000_00);
+      expect(fee).toBeDefined();
+      expect(fee!.amountCents).toBe(100_000_00 / 100);
+      const revenue = await prisma.ledgerAccount.findFirst({
+        where: { ownerType: "PLATFORM", accountType: "PLATFORM_REVENUE" },
+      });
+      expect(fee!.creditAccountId).toBe(revenue!.id);
+    });
+
+    it("expireUnfunded cancels a pending escrow with a PAYMENT_DEADLINE_MISSED milestone (system timer only)", async () => {
+      const escrow = await newEscrow();
+      await tm.markPendingPayment(
+        escrow.id,
+        { actor: "BUYER", userId: buyer.id },
+        { paymentDeadlineAt: new Date(Date.now() - 1_000), financingFeeBps: 100 },
+      );
+
+      // The system timer (deadline job) expires the escrow with the
+      // PAYMENT_DEADLINE_MISSED milestone. (Buyers can also cancel a pending
+      // escrow via the normal cancel path — that's the back-out option.)
+      const cancelled = await tm.expireUnfunded(escrow.id, { actor: "SYSTEM_TIMER" });
+      expect(cancelled.status).toBe("CANCELLED");
+      const milestone = await prisma.milestone.findFirst({
+        where: { escrowId: escrow.id, kind: "PAYMENT_DEADLINE_MISSED" },
+      });
+      expect(milestone).toBeDefined();
+
+      // Idempotent: a second expiry is a clean no-op failure.
+      await expect(tm.expireUnfunded(escrow.id, { actor: "SYSTEM_TIMER" })).rejects.toThrowError(
+        IllegalTransitionError,
+      );
+    });
+
+    it("funding after the deadline is still allowed while PENDING_PAYMENT (grace on the job side)", async () => {
+      const escrow = await newEscrow();
+      await tm.markPendingPayment(
+        escrow.id,
+        { actor: "BUYER", userId: buyer.id },
+        { paymentDeadlineAt: new Date(Date.now() - 1_000), financingFeeBps: 100 },
+      );
+      // The deadline job races the buyer's Pay Now click; whoever locks the
+      // row first wins. The buyer funding a split-second late is legitimate.
+      const funded = await tm.fund(escrow.id, { actor: "BUYER", userId: buyer.id });
+      expect(funded.status).toBe("FUNDED");
+    });
+  });
 });

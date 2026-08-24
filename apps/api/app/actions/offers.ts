@@ -6,6 +6,7 @@ import { prisma, type OfferPriceType, type OfferStatus } from "@livestock/db";
 import { getDemoUser, getDemoRoles } from "../../lib/demoAuth";
 import { estimateRouteMiles } from "@livestock/shared";
 import { getPlatformSettings } from "../../lib/platformSettings";
+import { assertFinancingEligible, financeEscrow } from "../../lib/financing";
 
 export interface OfferActionResult {
   ok: boolean;
@@ -214,7 +215,11 @@ export async function declineOfferAction(offerId: string, reason?: string): Prom
   }
 }
 
-export async function confirmOfferAction(offerId: string, destination?: string): Promise<OfferActionResult> {
+export async function confirmOfferAction(
+  offerId: string,
+  destination?: string,
+  financed = false,
+): Promise<OfferActionResult> {
   try {
     const user = await getDemoUser();
     const roles = await getDemoRoles();
@@ -232,6 +237,16 @@ export async function confirmOfferAction(offerId: string, destination?: string):
     if (!offer) return { ok: false, error: "Offer not found" };
     if (offer.buyerId !== user.id) return { ok: false, error: "This is not your offer" };
     if (offer.status !== "ACCEPTED") return { ok: false, error: `Cannot confirm an offer that is ${offer.status.toLowerCase()}` };
+
+    // Financing eligibility pre-check before anything is created or marked
+    // sold — a failed financing choice must not leave listings SOLD.
+    if (financed) {
+      const eligibilityError = await assertFinancingEligible({
+        buyerId: user.id,
+        saleAmountCents: offer.totalAmountCents,
+      });
+      if (eligibilityError) return { ok: false, error: eligibilityError };
+    }
 
     // Pick hauler
     const hauler =
@@ -325,6 +340,14 @@ export async function confirmOfferAction(offerId: string, destination?: string):
         });
       }
     });
+
+    // Deferred payment: convert the draft to a financed escrow (stamps the
+    // payment deadline + fee and schedules auto-cancel). Non-financed offers
+    // stay DRAFT and are funded later from the escrow detail page.
+    if (financed) {
+      const res = await financeEscrow(escrow.id, user.id);
+      if (!res.ok) return { ok: false, error: res.error };
+    }
 
     revalidatePath("/offers");
     revalidatePath("/marketplace");

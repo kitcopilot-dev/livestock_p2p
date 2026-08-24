@@ -24,6 +24,7 @@ export function OfferActions({ offer, role }: OfferActionsProps) {
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
+  const [financed, setFinanced] = useState(false);
   const router = useRouter();
 
   async function run(fn: () => Promise<OfferActionResult>, label: string) {
@@ -76,14 +77,23 @@ export function OfferActions({ offer, role }: OfferActionsProps) {
     return (
       <div className="space-y-2">
         <div className="flex flex-wrap items-center gap-2">
-          <button type="button" className="btn-primary" disabled={pending} onClick={() => run(() => confirmOfferAction(offer.id, offer.destinationFacility ?? undefined), "Confirm")}>
+          <button type="button" className="btn-primary" disabled={pending} onClick={() => run(() => confirmOfferAction(offer.id, offer.destinationFacility ?? undefined, financed), "Confirm")}>
             Confirm &amp; create escrow
           </button>
           <button type="button" className="btn-ghost" disabled={pending} onClick={() => run(() => withdrawOfferAction(offer.id), "Withdraw")}>
             Withdraw
           </button>
         </div>
-        <p className="text-xs text-cream-500">This locks in the deal — escrow will be created and funds must be deposited.</p>
+        <label className="flex cursor-pointer items-center gap-2 text-xs text-cream-400">
+          <input
+            type="checkbox"
+            checked={financed}
+            onChange={(e) => setFinanced(e.target.checked)}
+            className="h-4 w-4 rounded border-dirt-600 bg-dirt-900 accent-barn-500"
+          />
+          Pay later — deferred payment with a 1% financing fee
+        </label>
+        <p className="text-xs text-cream-500">This locks in the deal — escrow will be created and funds must be deposited{financed ? " within the payment window" : ""}.</p>
         {error && <p className="text-xs text-barn-300">{error}</p>}
         {notice && <p className="text-xs text-pasture-300">{notice}</p>}
       </div>

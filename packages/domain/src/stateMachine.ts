@@ -110,7 +110,9 @@ export const ESCROW_TRANSITIONS: Record<
   },
   PENDING_PAYMENT: {
     FUNDED: [actorIs("BUYER", "PLATFORM")],
-    CANCELLED: [actorIs("BUYER", "PLATFORM")],
+    // SYSTEM_TIMER = the financing-deadline job auto-cancelling an unfunded
+    // escrow once paymentDeadlineAt passes.
+    CANCELLED: [actorIs("BUYER", "PLATFORM", "SYSTEM_TIMER")],
   },
   FUNDED: {
     IN_TRANSIT: [actorIs("HAULER", "PLATFORM")],

@@ -20,6 +20,11 @@ export interface PlatformSettings {
   paymentRail: PaymentRail;
   inspectionWindowMs: number;
   disputeProofWindowMs: number;
+  /** Financing (deferred payment) terms. */
+  financingWindowDays: number;
+  financingFeeBps: number;
+  financingMaxEscrowCents: number;
+  financingMaxOutstandingCents: number;
 }
 
 const DEFAULTS: PlatformSettings = {
@@ -29,6 +34,10 @@ const DEFAULTS: PlatformSettings = {
   paymentRail: "STRIPE",
   inspectionWindowMs: INSPECTION_WINDOW_MS, // 24h
   disputeProofWindowMs: DISPUTE_PROOF_WINDOW_MS, // 48h
+  financingWindowDays: 14, // pay within 14 days of creating the financed escrow
+  financingFeeBps: 100, // 1.0% of sale, owed at funding
+  financingMaxEscrowCents: 1_000_000, // $10k per financed escrow
+  financingMaxOutstandingCents: 2_500_000, // $25k concurrent across open financed escrows
 };
 
 const DESCRIPTIONS: Record<string, string> = {
@@ -38,6 +47,10 @@ const DESCRIPTIONS: Record<string, string> = {
   paymentRail: "Default payout rail for settlements (STRIPE or DWOLLA).",
   inspectionWindowMs: "Buyer inspection window after delivery, in milliseconds.",
   disputeProofWindowMs: "Evidence submission window after a dispute, in milliseconds.",
+  financingWindowDays: "Days a buyer has to fund a financed escrow before it auto-cancels.",
+  financingFeeBps: "Financing fee in basis points of sale (100 = 1%), owed at funding.",
+  financingMaxEscrowCents: "Max sale amount (in cents) that can be financed per escrow.",
+  financingMaxOutstandingCents: "Max outstanding financed amount (in cents) per buyer.",
 };
 
 /** Idempotently seed the settings table with production defaults. */
@@ -76,6 +89,10 @@ export async function getPlatformSettings(): Promise<PlatformSettings> {
     paymentRail: (map.get("paymentRail") as PaymentRail | undefined) ?? DEFAULTS.paymentRail,
     inspectionWindowMs: intSetting(map, "inspectionWindowMs", DEFAULTS.inspectionWindowMs),
     disputeProofWindowMs: intSetting(map, "disputeProofWindowMs", DEFAULTS.disputeProofWindowMs),
+    financingWindowDays: intSetting(map, "financingWindowDays", DEFAULTS.financingWindowDays),
+    financingFeeBps: intSetting(map, "financingFeeBps", DEFAULTS.financingFeeBps),
+    financingMaxEscrowCents: intSetting(map, "financingMaxEscrowCents", DEFAULTS.financingMaxEscrowCents),
+    financingMaxOutstandingCents: intSetting(map, "financingMaxOutstandingCents", DEFAULTS.financingMaxOutstandingCents),
   };
 }
 

@@ -12,6 +12,7 @@ export const QUEUE_NAMES = {
   inspectionTimeout: "inspection-timeout",
   disputeProofDeadline: "dispute-proof-deadline",
   settlementRetry: "settlement-retry",
+  financingDeadline: "financing-deadline",
   sweep: "sweep",
 } as const;
 
@@ -24,6 +25,10 @@ export interface DisputeProofDeadlineJobData {
 }
 
 export interface SettlementRetryJobData {
+  escrowId: string;
+}
+
+export interface FinancingDeadlineJobData {
   escrowId: string;
 }
 
@@ -62,6 +67,7 @@ export function createQueues(connection: IORedis): Record<keyof typeof QUEUE_NAM
     inspectionTimeout: new Queue(QUEUE_NAMES.inspectionTimeout, { connection, defaultJobOptions }),
     disputeProofDeadline: new Queue(QUEUE_NAMES.disputeProofDeadline, { connection, defaultJobOptions }),
     settlementRetry: new Queue(QUEUE_NAMES.settlementRetry, { connection, defaultJobOptions }),
+    financingDeadline: new Queue(QUEUE_NAMES.financingDeadline, { connection, defaultJobOptions }),
     sweep: new Queue(QUEUE_NAMES.sweep, { connection, defaultJobOptions }),
   };
 }

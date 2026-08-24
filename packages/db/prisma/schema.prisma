@@ -60,6 +60,7 @@ enum LedgerEntryType {
   REVERSAL
   CHARGEBACK
   ADJUSTMENT
+  FINANCING_FEE
 }
 
 enum LedgerEntryStatus {
@@ -142,6 +143,8 @@ enum MilestoneKind {
   REFUNDED
   CANCELLED
   SETTLEMENT_FAILED
+  PAYMENT_DEADLINE_MISSED
+  FINANCING_ELECTED
 }
 
 enum JobKind {
@@ -149,6 +152,7 @@ enum JobKind {
   DISPUTE_PROOF_DEADLINE
   SETTLEMENT_RETRY
   SETTLEMENT_EXECUTION
+  FINANCING_DEADLINE
 }
 enum Species {
   CATTLE
@@ -369,7 +373,11 @@ model EscrowTransaction {
   shrinkPenaltyCents   Int?
   inspectionDeadlineAt DateTime?
   disputeProofDeadlineAt DateTime?
-  settlementAt         DateTime?
+  // Financing (deferred payment): when the buyer must fund the escrow, and
+  // the 1% fee owed at funding time (bps-tunable via platform settings).
+  paymentDeadlineAt  DateTime?
+  financingFeeCents  Int?
+  settlementAt       DateTime?
   version              Int      @default(1)
   createdAt            DateTime @default(now())
   updatedAt            DateTime @updatedAt
@@ -387,6 +395,7 @@ model EscrowTransaction {
   offer            Offer?
 
   @@index([status, inspectionDeadlineAt])
+  @@index([status, paymentDeadlineAt])
   @@index([buyerId])
   @@index([sellerId])
   @@index([haulerId])
