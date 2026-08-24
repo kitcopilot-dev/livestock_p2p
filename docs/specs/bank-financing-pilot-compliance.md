@@ -56,13 +56,30 @@ The bank disbursement webhook MUST verify authenticity (signature/secret, per th
 ### R9 — Records and audit
 The pilot MUST keep an immutable audit record (reusing the existing audit log) of: purpose attestations, data-sharing consents, bank handoff requests, webhook events, and fee postings — sufficient to demonstrate the R1–R8 boundaries if examined.
 
-## 5. Licensing matrix skeleton (to be completed with counsel)
+## 5. Licensing matrix for pilot go-live (draft; counsel sign-off pending)
 
-| State | Arranging/soliciting license needed? | Servicing license needed? | Notes / statute | Status |
+**Scope of the analysis.** The platform's model sharply limits licensing exposure: the bank owns the credit decision end-to-end and originates and funds every loan; the platform neither services nor collects on the loans (the buyer repays the bank directly); compensation is a service/origination fee plus bank revenue share, not loan participation. Consequently the servicing and debt-collection buckets below are **excluded by design** and flagged only where a change of model would bring them back. The live question is the **arranging / soliciting / broker bucket**.
+
+**Columns:** state · arranging/soliciting trigger · servicing/collection (excluded by design unless noted) · statute · platform posture at go-live.
+
+| State | Arranging / soliciting license? | Servicing / collection | Notes / statute | Go-live posture |
 |---|---|---|---|---|
-| (fill from buyer/seller concentration) | | | | |
+| NV | **Yes — likely required** | Excluded by design (no servicing) | "Engaging in business of lending" incl. soliciting loans to NV residents or to NV consumers from out of state (§675.020(4), §675.060); also a license if the platform holds a "material economic interest" in bank-funded loan revenue (§675.035(3)(c)). NV regulator reads the statute to cover "any fintech finding potential consumers." | RED — obtain license or exclude NV buyers from the pilot until counsel clears |
+| TN | **Yes — likely required** | Excluded by design | "Endorsement company" = arranging a loan for a fee (§45-5-102(8),(11), §45-5-103(a)); industrial loan & thrift company license. | RED — license or exclude TN buyers |
+| HI | **Yes — likely required** | HI collection-agency reg (excluded by design) | Installment-loan license to offer/make/arrange/act as agent for a consumer loan for a third party (§480J-31(a), §480J-1, §480J-2(a)(2)); applies even when the third party is exempt. | RED — license or exclude HI buyers |
+| MA | **Conditional — Yes if loan ≤$6,000 at ≥12% APR** | Yes if servicing (excluded by design) | Broker license for loans ≤$6,000 with APR ≥12% (§140/96); separate third-party servicer + debt-collector regs (ch. 93 §§24, 24A) — not reached if platform never services. | AMBER — confirm Avvance loan APRs/amounts vs. the $6k/12% trigger; likely excluded for larger ag loans |
+| NH | **Conditional — Yes if loan ≤$10,000 at ≥10% APR** | Yes if servicing (excluded by design) | License to broker or service small loans ≤$10,000 with APR ≥10% (§399-A:2(I), §399-A:1(XX)). Not triggered by larger loans. | AMBER — confirm loan size/APR; likely excluded for larger ag loans |
+| ME | **Totality test** | Excluded by design | Supervised Lender License when, in the totality of circumstances, the platform is really the lender: indemnifies the bank, predominantly designs/controls the program, or holds the right of refusal to buy the loans (§2-702(1)-(3)). | AMBER — our posture (non-recourse, no indemnity, no right of refusal) is structured to fail this test; counsel to confirm |
+| IL | **Totality test** | Excluded by design | Same totality factors: indemnity, program design/control, acting as agent while a lender elsewhere (815 ILCS 123/15-5-15(b)(3)(i)-(iii)). | AMBER — same structure argument |
+| FL | **No broker license** | No servicing/debt-collection license | FL requires a Consumer Finance Company license to *make* loans, but NOT a broker license to arrange, nor a servicing or debt-collection license. | GREEN — no license needed to arrange |
+| TX | No arranging trigger | **Yes if servicing** (excluded) | Servicing license to "contract for, charge, or receive" interest/fees on loans >10% APR (§342.051(a)(2)). | GREEN for arranging; excluded by no-servicing model |
+| NE | No arranging trigger | **Yes if servicing/participation** (excluded) | License to hold/acquire servicing rights or any loan participation (§45-1005, §45-1004). | GREEN for arranging; excluded by no-servicing model |
+| GA | No arranging trigger | **Yes if servicing ≤$3k loans** (excluded) | Installment-lender license incl. servicing loans ≤$3,000 made by others (§7-3-4(a), §7-3-3(6)-(7)). | GREEN for arranging; excluded by no-servicing model |
+| (concentration states TBD) | Per counsel | Per counsel | Add rows here for the states where sellers/buyers concentrate once geo is confirmed (see Open items). | TBD |
 
-Known starting points from research: NV (Nev. Rev. Stat. §675.020/.035), TN (Tenn. Code Ann. §45-5-102/103), HI (Haw. Rev. Stat. §480J), ME (Me. Rev. Stat. tit. 9-A §2-702), IL (815 ILCS 123/15-5-15), TX (Tex. Fin. Code §342.051), NE (Neb. Rev. Stat. §45-1005), GA (Ga. Code Ann. §7-3-4). FL does not require a broker license to arrange consumer loans.
+**Go-live rule (R7):** the pilot starts only in states whose matrix row is GREEN, or RED/AMBER states where the required license has been obtained or buyers are excluded. As drafted, the platform may go live in FL, TX, NE, GA (arranging-neutral) and likely in MA/NH/ME/IL structures — subject to counsel confirming the totality arguments and loan-size/APR triggers. NV, TN, HI are RED pending a license or buyer exclusion.
+
+**Key structural guardrails that keep AMBER rows green** (folded from §4): no credit decision (R2), bank-verbatim terms and no rate-setting (R3), compensation as service fees with no "material economic interest" (R4), no indemnity / non-recourse (standing decision), no servicing or debt collection (standing decision — buyer repays the bank). Forgoing servicing and loan participation is what excludes the TX/NE/GA/CA/HI/MA servicing-and-collection buckets entirely.
 
 ## 6. Acceptance checks for the pilot
 
