@@ -2,7 +2,7 @@ import Link from "next/link";
 import { prisma } from "@livestock/db";
 import { auditLogger } from "@livestock/compliance";
 import { getCurrentUser } from "../../../lib/auth";
-import { getDemoUserForRole } from "../../../lib/demoAuth";
+import { getDemoUser, getDemoUserForRole } from "../../../lib/demoAuth";
 import { compactMoney } from "../../../lib/format";
 import { ListingCard } from "../../../components/ListingCard";
 import { PayNowShortcut } from "../../../components/PayNowShortcut";
@@ -39,6 +39,11 @@ export default async function DashboardPage() {
 }
 
 async function BuyerHome({ currentUserId }: { currentUserId?: string }) {
+  // Escrow flows act as the demo identity (getDemoUser), so the financing
+  // view keys off the same identity the purchase actions use — not the
+  // session user, whose id never matches an escrow's buyerId.
+  const actingBuyer = await getDemoUser();
+  const buyerId = actingBuyer?.id ?? currentUserId;
   const [listings, financed] = await Promise.all([
     prisma.listing.findMany({
       where: { status: "ACTIVE" },
@@ -46,9 +51,9 @@ async function BuyerHome({ currentUserId }: { currentUserId?: string }) {
       take: 6,
       include: { seller: { select: { id: true, name: true } } },
     }),
-    currentUserId
+    buyerId
       ? prisma.escrowTransaction.findMany({
-          where: { buyerId: currentUserId, status: "PENDING_PAYMENT" },
+          where: { buyerId, status: "PENDING_PAYMENT" },
           orderBy: { paymentDeadlineAt: "asc" },
           include: { seller: { select: { name: true } } },
         })
